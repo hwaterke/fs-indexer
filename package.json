@@ -1,0 +1,52 @@
+{
+  "name": "fs-indexer",
+  "version": "0.0.0",
+  "author": "hwaterke @hwaterke",
+  "bin": {
+    "fs-indexer": "./bin/run"
+  },
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "files": [
+    "/bin",
+    "/lib",
+    "/npm-shrinkwrap.json",
+    "/oclif.manifest.json"
+  ],
+  "homepage": "https://github.com/hwaterke/fs-indexer",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "oclif": {
+    "commands": "./lib/commands",
+    "bin": "fs-indexer",
+    "plugins": [
+      "@oclif/plugin-help"
+    ]
+  },
+  "repository": "hwaterke/fs-indexer",
+  "scripts": {
+    "format": "prettier --write .",
+    "postpack": "rm -f oclif.manifest.json",
+    "prepack": "rm -rf lib && tsc -b && oclif-dev manifest && oclif-dev readme",
+    "version": "oclif-dev readme && git add README.md"
+  },
+  "types": "lib/index.d.ts",
+  "dependencies": {
+    "@oclif/command": "^1",
+    "@oclif/config": "^1",
+    "@oclif/plugin-help": "^3",
+    "tslib": "^1"
+  },
+  "devDependencies": {
+    "@oclif/dev-cli": "^1",
+    "@types/node": "^10",
+    "eslint": "^5.13",
+    "eslint-config-oclif": "^3.1",
+    "eslint-config-oclif-typescript": "^0.1",
+    "globby": "^10",
+    "prettier": "^2.4.1",
+    "ts-node": "^8",
+    "typescript": "^3.3"
+  }
+}
