@@ -26,7 +26,7 @@ $ npm install -g fs-indexer
 $ fs-indexer COMMAND
 running command...
 $ fs-indexer (-v|--version|version)
-fs-indexer/0.0.0 darwin-x64 node-v16.7.0
+fs-indexer/0.0.1 darwin-x64 node-v16.7.0
 $ fs-indexer --help [COMMAND]
 USAGE
   $ fs-indexer COMMAND
@@ -57,7 +57,7 @@ OPTIONS
   -l, --limit=limit                      stop after indexing n files
 ```
 
-_See code: [src/commands/crawl.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.0/src/commands/crawl.ts)_
+_See code: [src/commands/crawl.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.1/src/commands/crawl.ts)_
 
 ## `fs-indexer help [COMMAND]`
 
@@ -89,7 +89,7 @@ OPTIONS
   -h, --help               show CLI help
 ```
 
-_See code: [src/commands/info.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.0/src/commands/info.ts)_
+_See code: [src/commands/info.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.1/src/commands/info.ts)_
 
 ## `fs-indexer verify PATH`
 
@@ -107,5 +107,5 @@ OPTIONS
   -p, --purge                            deletes files that do not exist anymore from the database
 ```
 
-_See code: [src/commands/verify.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.0/src/commands/verify.ts)_
+_See code: [src/commands/verify.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.1/src/commands/verify.ts)_
 <!-- commandsstop -->
