@@ -6,7 +6,7 @@
     "fs-indexer": "./bin/run"
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=16.0.0"
   },
   "files": [
     "/bin",
@@ -33,18 +33,24 @@
   },
   "types": "lib/index.d.ts",
   "dependencies": {
+    "@nodelib/fs.walk": "^1.2.8",
     "@oclif/command": "^1",
     "@oclif/config": "^1",
     "@oclif/plugin-help": "^3",
-    "tslib": "^1"
+    "reflect-metadata": "^0.1.13",
+    "shelljs": "^0.8.4",
+    "sqlite3": "^5.0.2",
+    "tslib": "^1",
+    "typeorm": "^0.2.38"
   },
   "devDependencies": {
     "@oclif/dev-cli": "^1",
-    "@types/node": "^10",
+    "@types/node": "^16",
+    "@types/shelljs": "^0.8.9",
     "eslint": "^5.13",
     "eslint-config-oclif": "^3.1",
     "eslint-config-oclif-typescript": "^0.1",
-    "globby": "^10",
+    "eslint-config-prettier": "^8.3.0",
     "prettier": "^2.4.1",
     "ts-node": "^8",
     "typescript": "^3.3"

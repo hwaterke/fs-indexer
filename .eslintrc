@@ -1,3 +1,14 @@
 {
-  "extends": ["oclif", "oclif-typescript"]
+  "extends": [
+    "eslint:recommended",
+    "oclif",
+    "oclif-typescript",
+    "prettier"
+  ],
+  "rules": {
+    "unicorn/filename-case": "off",
+    "new-cap": "off",
+    "node/no-missing-import": "off",
+    "lines-between-class-members": "off"
+  }
 }

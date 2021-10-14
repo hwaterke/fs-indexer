@@ -6,15 +6,21 @@
 [![License](https://img.shields.io/npm/l/fs-indexer.svg)](https://github.com/hwaterke/fs-indexer/blob/master/package.json)
 
 <!-- toc -->
-
-- [Usage](#usage)
-- [Commands](#commands)
+* [fs-indexer](#fs-indexer)
+* [Installation](#installation)
+* [Usage](#usage)
+* [Commands](#commands)
 <!-- tocstop -->
+
+# Installation
+
+For the hashing function, you need to install `b3sum` and `xxh128sum`.
+
+On a mac, this can be achieved with `brew install b3sum xxhash`
 
 # Usage
 
 <!-- usage -->
-
 ```sh-session
 $ npm install -g fs-indexer
 $ fs-indexer COMMAND
@@ -26,36 +32,32 @@ USAGE
   $ fs-indexer COMMAND
 ...
 ```
-
 <!-- usagestop -->
 
 # Commands
 
 <!-- commands -->
+* [`fs-indexer crawl PATH`](#fs-indexer-crawl-path)
+* [`fs-indexer help [COMMAND]`](#fs-indexer-help-command)
+* [`fs-indexer info`](#fs-indexer-info)
+* [`fs-indexer verify PATH`](#fs-indexer-verify-path)
 
-- [`fs-indexer hello [FILE]`](#fs-indexer-hello-file)
-- [`fs-indexer help [COMMAND]`](#fs-indexer-help-command)
+## `fs-indexer crawl PATH`
 
-## `fs-indexer hello [FILE]`
-
-describe the command here
+index the folder provided
 
 ```
 USAGE
-  $ fs-indexer hello [FILE]
+  $ fs-indexer crawl PATH
 
 OPTIONS
-  -f, --force
-  -h, --help       show CLI help
-  -n, --name=name  name to print
-
-EXAMPLE
-  $ fs-indexer hello
-  hello world from ./src/hello.ts!
+  -a, --hashingAlgorithms=BLAKE3|XXHASH  hashing algorithms to use
+  -d, --database=database                [default: fs-index.db] database file
+  -h, --help                             show CLI help
+  -l, --limit=limit                      stop after indexing n files
 ```
 
-_See code:
-[src/commands/hello.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.0/src/commands/hello.ts)_
+_See code: [src/commands/crawl.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.0/src/commands/crawl.ts)_
 
 ## `fs-indexer help [COMMAND]`
 
@@ -72,7 +74,38 @@ OPTIONS
   --all  see all commands in CLI
 ```
 
-_See code:
-[@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v3.2.3/src/commands/help.ts)_
+_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v3.2.3/src/commands/help.ts)_
 
+## `fs-indexer info`
+
+prints information about the database
+
+```
+USAGE
+  $ fs-indexer info
+
+OPTIONS
+  -d, --database=database  [default: fs-index.db] database file
+  -h, --help               show CLI help
+```
+
+_See code: [src/commands/info.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.0/src/commands/info.ts)_
+
+## `fs-indexer verify PATH`
+
+verifies that the content of the database is in sync with the file system
+
+```
+USAGE
+  $ fs-indexer verify PATH
+
+OPTIONS
+  -a, --hashingAlgorithms=BLAKE3|XXHASH  hashing algorithms to use
+  -d, --database=database                [default: fs-index.db] database file
+  -h, --help                             show CLI help
+  -l, --limit=limit                      stop after indexing n files
+  -p, --purge                            deletes files that do not exist anymore from the database
+```
+
+_See code: [src/commands/verify.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.0/src/commands/verify.ts)_
 <!-- commandsstop -->

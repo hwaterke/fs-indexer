@@ -1,0 +1,146 @@
+import {getRepository} from 'typeorm'
+import {FileEntity} from '../database/entities/FileEntity'
+import {walkDir} from '../utils'
+import {stat, access} from 'node:fs/promises'
+import {constants} from 'node:fs'
+import {LoggerService} from './LoggerService'
+import {DatabaseService} from './DatabaseService'
+import * as nodePath from 'node:path'
+import {HashingAlgorithm, HashingService} from './HashingService'
+import {HashEntity} from '../database/entities/HashEntity'
+
+type CrawlingOptions = {
+  limit?: number
+  hashingAlgorithms: HashingAlgorithm[]
+}
+
+type VerifyOptions = {
+  limit?: number
+  hashingAlgorithms: HashingAlgorithm[]
+  purge: boolean
+}
+
+export class IndexerService {
+  private logger = new LoggerService()
+  private databaseService = new DatabaseService()
+  private hashingService = new HashingService()
+
+  async info() {
+    const count = await this.databaseService.countFiles()
+    this.logger.info(`${count} files indexed`)
+  }
+
+  async crawl(path: string, options: CrawlingOptions) {
+    this.logger.debug(`Indexing ${path}`)
+
+    let newlyIndexedCount = 0
+
+    await walkDir(path, async (filePath) => {
+      // Is it already indexed?
+      const existingEntry = await this.databaseService.findFile(filePath)
+
+      if (existingEntry) {
+        this.logger.debug(`${filePath} already indexed`)
+        await this.hashFile(filePath, options.hashingAlgorithms, existingEntry)
+      } else {
+        this.logger.debug(`Indexing ${filePath}`)
+
+        const stats = await stat(filePath)
+
+        const repo = getRepository(FileEntity)
+        const fileEntity = await repo.save({
+          path: filePath,
+          size: stats.size,
+          ctime: Math.floor(stats.ctimeMs),
+          mtime: Math.floor(stats.mtimeMs),
+          basename: nodePath.basename(filePath),
+          extension: nodePath.extname(filePath),
+        })
+
+        await this.hashFile(filePath, options.hashingAlgorithms, fileEntity)
+
+        newlyIndexedCount++
+      }
+
+      return {
+        stop: !!(options.limit && newlyIndexedCount >= options.limit),
+      }
+    })
+
+    this.logger.info(`${newlyIndexedCount} new files indexed`)
+  }
+
+  async verify(path: string, options: VerifyOptions) {
+    this.logger.debug(`Verifying ${path}`)
+    const repo = getRepository(FileEntity)
+
+    const files = await this.databaseService.findAll()
+
+    for (const file of files) {
+      this.logger.debug(`Validating ${file.path}`)
+
+      try {
+        await access(file.path, constants.F_OK)
+      } catch {
+        this.logger.info(`File ${file.path} does not exist anymore`)
+
+        if (options.purge) {
+          await repo.remove(file)
+        }
+        continue
+      }
+
+      // File still exists, validate the stats
+      const stats = await stat(file.path)
+
+      if (stats.size === file.size) {
+        for await (const hashingAlgorithm of options.hashingAlgorithms) {
+          const existingHash = file.hashes.find(
+            (hash) => hash.algorithm === hashingAlgorithm
+          )
+
+          if (existingHash) {
+            const hash = this.hashingService.hash(file.path, hashingAlgorithm)
+            if (hash !== existingHash.value) {
+              this.logger.info(
+                `Inconsistent hash ${hashingAlgorithm} for ${file.path}. ${hash} vs ${existingHash.value}`
+              )
+            }
+          } else {
+            this.logger.info(`Missing hash ${hashingAlgorithm} for ${file}`)
+          }
+        }
+      } else {
+        this.logger.info(
+          `${file.path} has a different size. ${stats.size} vs ${file.size}`
+        )
+      }
+    }
+  }
+
+  private async hashFile(
+    path: string,
+    hashingAlgorithms: HashingAlgorithm[],
+    fileEntity: FileEntity | undefined
+  ) {
+    if (hashingAlgorithms.length > 0) {
+      this.logger.debug('Computing hashes')
+      const hr = getRepository(HashEntity)
+
+      for await (const hashingAlgorithm of hashingAlgorithms) {
+        if (
+          !fileEntity?.hashes ||
+          !fileEntity.hashes.some((he) => he.algorithm === hashingAlgorithm)
+        ) {
+          const hash = this.hashingService.hash(path, hashingAlgorithm)
+
+          await hr.save({
+            file: fileEntity,
+            algorithm: hashingAlgorithm,
+            value: hash,
+          })
+        }
+      }
+    }
+  }
+}
