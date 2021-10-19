@@ -21,7 +21,7 @@ export class HashingService {
   }
 
   private blake3(path: string) {
-    const result = exec(`b3sum --no-names ${path}`, {silent: true})
+    const result = exec(`b3sum --no-names "${path}"`, {silent: true})
     if (result.code !== 0) {
       throw new Error(`Error will computing BLAKE3 hash: ${result.stderr}`)
     }
@@ -29,7 +29,7 @@ export class HashingService {
   }
 
   private xxhash(path: string) {
-    const result = exec(`xxh128sum ${path}`, {silent: true})
+    const result = exec(`xxh128sum "${path}"`, {silent: true})
     if (result.code !== 0) {
       throw new Error(`Error will computing XXHASH hash: ${result.stderr}`)
     }
