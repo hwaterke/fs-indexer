@@ -1,4 +1,12 @@
-import {Column, Entity, JoinColumn, ManyToOne, PrimaryColumn} from 'typeorm'
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm'
 import {FileEntity} from './FileEntity'
 import {HashingAlgorithm} from '../../services/HashingService'
 
@@ -13,4 +21,10 @@ export class HashEntity {
 
   @Column()
   value!: string
+
+  @CreateDateColumn({name: 'created_at'})
+  createdAt!: Date
+
+  @UpdateDateColumn({name: 'updated_at'})
+  updatedAt!: Date
 }
