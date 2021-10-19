@@ -8,3 +8,5 @@
 node_modules
 .idea
 fs-index.db
+test-files
+*.db
