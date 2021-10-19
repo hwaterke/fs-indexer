@@ -29,6 +29,13 @@ export class IndexerService {
   private databaseService = new DatabaseService()
   private hashingService = new HashingService()
 
+  private metrics = {
+    filesCrawled: 0,
+    newFilesIndexed: 0,
+    filesHashed: 0,
+    hashesComputed: 0,
+  }
+
   async info(options: InfoOptions) {
     const fileCount = await this.databaseService.countFiles()
     this.logger.info(`${fileCount} files indexed`)
@@ -52,11 +59,11 @@ export class IndexerService {
   async crawl(path: string, options: CrawlingOptions) {
     this.logger.debug(`Indexing ${path}`)
 
-    let newlyIndexedCount = 0
-
     await walkDir(path, async (filePath) => {
       // Is it already indexed?
       const existingEntry = await this.databaseService.findFile(filePath)
+
+      this.metrics.filesCrawled++
 
       if (existingEntry) {
         this.logger.debug(`${filePath} already indexed`)
@@ -76,17 +83,23 @@ export class IndexerService {
           extension: nodePath.extname(filePath),
         })
 
-        await this.hashFile(filePath, options.hashingAlgorithms, fileEntity)
+        this.metrics.newFilesIndexed++
 
-        newlyIndexedCount++
+        await this.hashFile(filePath, options.hashingAlgorithms, fileEntity)
       }
 
       return {
-        stop: !!(options.limit && newlyIndexedCount >= options.limit),
+        stop: !!(
+          options.limit &&
+          Math.max(this.metrics.newFilesIndexed, this.metrics.filesHashed) >=
+            options.limit
+        ),
       }
     })
 
-    this.logger.info(`${newlyIndexedCount} new files indexed`)
+    this.logger.info(
+      `${this.metrics.filesCrawled} files crawled. ${this.metrics.newFilesIndexed} newly indexed. ${this.metrics.filesHashed} files hashed.`
+    )
   }
 
   async verify(path: string, options: VerifyOptions) {
@@ -142,8 +155,9 @@ export class IndexerService {
     hashingAlgorithms: HashingAlgorithm[],
     fileEntity: FileEntity | undefined
   ) {
+    let hashesComputed = false
+
     if (hashingAlgorithms.length > 0) {
-      this.logger.debug('Computing hashes')
       const hr = getRepository(HashEntity)
 
       for await (const hashingAlgorithm of hashingAlgorithms) {
@@ -152,6 +166,8 @@ export class IndexerService {
           !fileEntity.hashes.some((he) => he.algorithm === hashingAlgorithm)
         ) {
           const hash = this.hashingService.hash(path, hashingAlgorithm)
+          this.metrics.hashesComputed++
+          hashesComputed = true
 
           await hr.save({
             file: fileEntity,
@@ -160,6 +176,10 @@ export class IndexerService {
           })
         }
       }
+    }
+
+    if (hashesComputed) {
+      this.metrics.filesHashed++
     }
   }
 }
