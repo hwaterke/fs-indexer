@@ -9,6 +9,8 @@
     "unicorn/filename-case": "off",
     "new-cap": "off",
     "node/no-missing-import": "off",
-    "lines-between-class-members": "off"
+    "lines-between-class-members": "off",
+    "no-await-in-loop": "off",
+    "no-implicit-coercion": "off"
   }
 }
