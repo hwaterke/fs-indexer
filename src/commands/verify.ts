@@ -4,7 +4,7 @@ import {createConnection} from 'typeorm'
 import {IndexerService} from '../services/IndexerService'
 import {getDatabaseConfig} from '../database/config'
 import {HashingAlgorithm} from '../services/HashingService'
-import {getHashingAlgorithms} from '../utils'
+import {getHashingAlgorithms, readableElapsedTime} from '../utils'
 
 export default class Verify extends Command {
   static description =
@@ -39,6 +39,7 @@ export default class Verify extends Command {
   async run() {
     const {args, flags} = this.parse(Verify)
 
+    const startTime = new Date()
     const connection = await createConnection(getDatabaseConfig(flags.database))
     try {
       const indexer = new IndexerService()
@@ -46,6 +47,7 @@ export default class Verify extends Command {
         purge: flags.purge,
         hashingAlgorithms: getHashingAlgorithms(flags.hashingAlgorithms),
       })
+      console.log(`Operation performed in ${readableElapsedTime(startTime)}`)
     } finally {
       await connection.close()
     }

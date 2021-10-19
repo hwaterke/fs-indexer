@@ -4,7 +4,7 @@ import {createConnection} from 'typeorm'
 import {getDatabaseConfig} from '../database/config'
 import {IndexerService} from '../services/IndexerService'
 import {HashingAlgorithm} from '../services/HashingService'
-import {getHashingAlgorithms} from '../utils'
+import {getHashingAlgorithms, readableElapsedTime} from '../utils'
 
 export default class Crawl extends Command {
   static description = 'index the folder provided'
@@ -33,6 +33,7 @@ export default class Crawl extends Command {
   async run() {
     const {args, flags} = this.parse(Crawl)
 
+    const startTime = new Date()
     const connection = await createConnection(getDatabaseConfig(flags.database))
     try {
       const indexer = new IndexerService()
@@ -40,6 +41,7 @@ export default class Crawl extends Command {
         limit: flags.limit,
         hashingAlgorithms: getHashingAlgorithms(flags.hashingAlgorithms),
       })
+      console.log(`Operation performed in ${readableElapsedTime(startTime)}`)
     } finally {
       await connection.close()
     }

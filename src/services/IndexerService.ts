@@ -20,14 +20,33 @@ type VerifyOptions = {
   purge: boolean
 }
 
+type InfoOptions = {
+  duplicates: boolean
+}
+
 export class IndexerService {
   private logger = new LoggerService()
   private databaseService = new DatabaseService()
   private hashingService = new HashingService()
 
-  async info() {
-    const count = await this.databaseService.countFiles()
-    this.logger.info(`${count} files indexed`)
+  async info(options: InfoOptions) {
+    const fileCount = await this.databaseService.countFiles()
+    this.logger.info(`${fileCount} files indexed`)
+    const hashCount = await this.databaseService.countHashes()
+    this.logger.info(`${hashCount} hashes`)
+
+    for await (const algorithm of Object.values(HashingAlgorithm)) {
+      const algoHashCount = await this.databaseService.countHashes(algorithm)
+      this.logger.info(
+        `${algoHashCount} hashes (${algorithm}) - ${Math.round(
+          (100 * algoHashCount) / fileCount
+        )}%`
+      )
+    }
+
+    if (options.duplicates) {
+      // Finding duplicates
+    }
   }
 
   async crawl(path: string, options: CrawlingOptions) {
