@@ -1,5 +1,5 @@
 import {LoggerService} from './LoggerService'
-import {getRepository} from 'typeorm'
+import {getManager, getRepository} from 'typeorm'
 import {FileEntity} from '../database/entities/FileEntity'
 import {HashEntity} from '../database/entities/HashEntity'
 import {HashingAlgorithm} from './HashingService'
@@ -37,8 +37,26 @@ export class DatabaseService {
   }
 
   async duplicates() {
-    // Duplicates have their size and all their hashes in common
-    const repository = getRepository(HashEntity)
-    return await repository.createQueryBuilder('hash').getMany()
+    const repository = getRepository(FileEntity)
+
+    const files = await repository
+      .createQueryBuilder('file')
+      .innerJoinAndSelect('file.hashes', 'hash')
+      .innerJoin(
+        (qb) =>
+          qb
+            .select('hd.algorithm', 'd_algo')
+            .addSelect('hd.value', 'd_value')
+            .addSelect('COUNT(*)')
+            .from(HashEntity, 'hd')
+            .groupBy('hd.algorithm')
+            .addGroupBy('hd.value')
+            .having('COUNT(*) > 1'),
+        'dup',
+        'hash.value = dup.d_value AND hash.algorithm = dup.d_algo'
+      )
+      .getMany()
+
+    return files
   }
 }

@@ -8,6 +8,7 @@ import {DatabaseService} from './DatabaseService'
 import * as nodePath from 'node:path'
 import {HashingAlgorithm, HashingService} from './HashingService'
 import {HashEntity} from '../database/entities/HashEntity'
+import {DuplicateFinderService} from './DuplicateFinderService'
 
 type CrawlingOptions = {
   limit?: number
@@ -28,6 +29,7 @@ export class IndexerService {
   private logger = new LoggerService()
   private databaseService = new DatabaseService()
   private hashingService = new HashingService()
+  private duplicateFinder = new DuplicateFinderService()
 
   private metrics = {
     filesCrawled: 0,
@@ -52,7 +54,14 @@ export class IndexerService {
     }
 
     if (options.duplicates) {
-      // Finding duplicates
+      const candidates = await this.databaseService.duplicates()
+      this.logger.debug(`${candidates.length} duplicate candidates`)
+
+      const duplicates = this.duplicateFinder.getDuplicateGroups(candidates)
+
+      console.log(
+        duplicates.map((group) => this.duplicateFinder.debugGroup(group))
+      )
     }
   }
 
@@ -66,7 +75,6 @@ export class IndexerService {
       this.metrics.filesCrawled++
 
       if (existingEntry) {
-        this.logger.debug(`${filePath} already indexed`)
         await this.hashFile(filePath, options.hashingAlgorithms, existingEntry)
       } else {
         this.logger.debug(`Indexing ${filePath}`)
@@ -109,7 +117,11 @@ export class IndexerService {
     const files = await this.databaseService.findAll()
 
     for (const file of files) {
-      this.logger.debug(`Validating ${file.path}`)
+      if (options.limit && this.metrics.filesCrawled > options.limit) {
+        break
+      }
+
+      this.metrics.filesCrawled++
 
       try {
         await access(file.path, constants.F_OK)

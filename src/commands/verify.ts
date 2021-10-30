@@ -44,6 +44,7 @@ export default class Verify extends Command {
     try {
       const indexer = new IndexerService()
       await indexer.verify(args.path, {
+        limit: flags.limit,
         purge: flags.purge,
         hashingAlgorithms: getHashingAlgorithms(flags.hashingAlgorithms),
       })
