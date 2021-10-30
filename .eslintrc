@@ -11,6 +11,7 @@
     "node/no-missing-import": "off",
     "lines-between-class-members": "off",
     "no-await-in-loop": "off",
-    "no-implicit-coercion": "off"
+    "no-implicit-coercion": "off",
+    "no-return-await": "off"
   }
 }
