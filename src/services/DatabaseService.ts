@@ -17,6 +17,16 @@ export class DatabaseService {
       .getOne()
   }
 
+  async findFilesBySize(size: number) {
+    const repository = getRepository(FileEntity)
+
+    return await repository
+      .createQueryBuilder('file')
+      .leftJoinAndSelect('file.hashes', 'hash')
+      .where('file.size = :size', {size})
+      .getMany()
+  }
+
   async findAll() {
     const repository = getRepository(FileEntity)
 

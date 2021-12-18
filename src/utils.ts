@@ -1,7 +1,6 @@
 import {opendir} from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import {HashingAlgorithm} from './services/HashingService'
-import {start} from 'repl'
 
 type WalkCallback = (path: string) => Promise<{stop: boolean}>
 

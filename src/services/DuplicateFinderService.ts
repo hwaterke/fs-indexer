@@ -15,9 +15,19 @@ export class DuplicateFinderService {
     )
     this.logger.debug(`${sizeGroups.length} groups of files with same size`)
 
-    return sizeGroups
+    const unsorted = sizeGroups
       .flatMap((group) => this.groupByHashes(group))
       .filter((group) => group.length > 1)
+
+    // Sort by group length
+    const sorted = unsorted.sort((a, b) => b.length - a.length)
+
+    // Sort by path
+    const sortedByPath = sorted.map((group) =>
+      group.sort((a, b) => a.path.localeCompare(b.path))
+    )
+
+    return sortedByPath
   }
 
   private groupBySize(files: FileEntity[]) {

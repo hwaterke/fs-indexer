@@ -1,7 +1,7 @@
 import {getRepository} from 'typeorm'
 import {FileEntity} from '../database/entities/FileEntity'
 import {walkDir} from '../utils'
-import {stat, access} from 'node:fs/promises'
+import {stat, access, writeFile} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import {LoggerService} from './LoggerService'
 import {DatabaseService} from './DatabaseService'
@@ -59,9 +59,29 @@ export class IndexerService {
 
       const duplicates = this.duplicateFinder.getDuplicateGroups(candidates)
 
-      console.log(
-        duplicates.map((group) => this.duplicateFinder.debugGroup(group))
+      // Write duplicates to file
+      const data = JSON.stringify(
+        duplicates.map((group) => group.map((f) => f.path))
       )
+      await writeFile('./duplicates.json', data, 'utf8')
+
+      duplicates.map((group) => this.duplicateFinder.debugGroup(group))
+    }
+  }
+
+  async lookup(path: string) {
+    this.logger.debug(`Lookup ${path}`)
+
+    // TODO Handle directories
+
+    // If path is a directory
+
+    const similarFiles = await this.lookupExistingEntries(path)
+    if (similarFiles.length > 0) {
+      this.logger.info(`✅ ${path}`)
+      similarFiles.forEach((file) => this.logger.debug(`  ${file.path}`))
+    } else {
+      this.logger.info(`❌ ${path}`)
     }
   }
 
@@ -193,5 +213,36 @@ export class IndexerService {
     if (hashesComputed) {
       this.metrics.filesHashed++
     }
+  }
+
+  private async lookupExistingEntries(path: string): Promise<FileEntity[]> {
+    const stats = await stat(path)
+    const size = stats.size
+
+    const existingEntries: FileEntity[] = []
+
+    const filesWithSameSize = await this.databaseService.findFilesBySize(size)
+    this.logger.debug(
+      `Found ${filesWithSameSize.length} files with the same size`
+    )
+
+    for (const file of filesWithSameSize) {
+      if (
+        file.hashes.length > 0 &&
+        file.hashes.every((hashEntity) => {
+          const hash = this.hashingService.hash(path, hashEntity.algorithm)
+
+          this.logger.debug(
+            `Comparing ${hash} with ${hashEntity.value} for ${hashEntity.algorithm}`
+          )
+
+          return hash === hashEntity.value
+        })
+      ) {
+        existingEntries.push(file)
+      }
+    }
+
+    return existingEntries
   }
 }
