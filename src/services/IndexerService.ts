@@ -1,7 +1,7 @@
 import {getRepository} from 'typeorm'
 import {FileEntity} from '../database/entities/FileEntity'
-import {walkDir} from '../utils'
-import {stat, access, writeFile} from 'node:fs/promises'
+import {walkDirOrFile} from '../utils'
+import {access, stat, writeFile} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import {LoggerService} from './LoggerService'
 import {DatabaseService} from './DatabaseService'
@@ -72,26 +72,30 @@ export class IndexerService {
   async lookup(path: string): Promise<void> {
     this.logger.debug(`Lookup ${path}`)
 
-    // TODO Handle directories
+    await walkDirOrFile(path, async (filePath) => {
+      const similarFiles = await this.lookupExistingEntries(filePath)
+      if (similarFiles.length > 0) {
+        if (similarFiles.length === 1 && similarFiles[0].path === filePath) {
+          this.logger.info(`🆗 ${filePath}`)
+        } else {
+          this.logger.info(`✅ ${filePath}`)
+        }
 
-    // If path is a directory
-
-    const similarFiles = await this.lookupExistingEntries(path)
-    if (similarFiles.length > 0) {
-      this.logger.info(`✅ ${path}`)
-
-      for (const file of similarFiles) {
-        this.logger.debug(`  ${file.path}`)
+        for (const file of similarFiles) {
+          this.logger.debug(`  ${file.path}`)
+        }
+      } else {
+        this.logger.info(`❌ ${filePath}`)
       }
-    } else {
-      this.logger.info(`❌ ${path}`)
-    }
+
+      return {stop: false}
+    })
   }
 
   async crawl(path: string, options: CrawlingOptions): Promise<void> {
     this.logger.debug(`Indexing ${path}`)
 
-    await walkDir(path, async (filePath) => {
+    await walkDirOrFile(path, async (filePath) => {
       // Is it already indexed?
       const existingEntry = await this.databaseService.findFile(filePath)
 
@@ -135,6 +139,9 @@ export class IndexerService {
     for (const file of files) {
       if (options.limit && this.metrics.filesCrawled > options.limit) {
         break
+      }
+      if (!file.path.startsWith(path)) {
+        continue
       }
 
       this.metrics.filesCrawled++
@@ -241,8 +248,7 @@ export class IndexerService {
   }
 
   private async lookupExistingEntries(path: string): Promise<FileEntity[]> {
-    const stats = await stat(path)
-    const size = stats.size
+    const {size} = await this.getFileMetadata(path)
 
     const existingEntries: FileEntity[] = []
 
