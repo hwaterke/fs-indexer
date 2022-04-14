@@ -1,5 +1,5 @@
 import 'reflect-metadata'
-import {Command, flags} from '@oclif/command'
+import {Command, Flags} from '@oclif/core'
 import {createConnection} from 'typeorm'
 import {IndexerService} from '../services/IndexerService'
 import {getDatabaseConfig} from '../database/config'
@@ -9,17 +9,16 @@ export default class Info extends Command {
   static description = 'prints information about the database'
 
   static flags = {
-    help: flags.help({char: 'h'}),
-    database: flags.string({
+    database: Flags.string({
       char: 'd',
       description: 'database file',
       default: 'fs-index.db',
     }),
-    duplicates: flags.boolean({default: false}),
+    duplicates: Flags.boolean({default: false}),
   }
 
-  async run() {
-    const {flags} = this.parse(Info)
+  async run(): Promise<void> {
+    const {flags} = await this.parse(Info)
 
     const startTime = new Date()
     const connection = await createConnection(getDatabaseConfig(flags.database))

@@ -30,7 +30,7 @@ export class DuplicateFinderService {
     return sortedByPath
   }
 
-  private groupBySize(files: FileEntity[]) {
+  private groupBySize(files: FileEntity[]): FileEntity[][] {
     const bySize: Record<number, FileEntity[]> = {}
     for (const file of files) {
       if (!bySize[file.size]) {
@@ -77,14 +77,13 @@ export class DuplicateFinderService {
     console.table(files.map((f) => this.debug(f)))
   }
 
-  debug(file: FileEntity) {
+  debug(file: FileEntity): Record<string, string | number> {
     return {
       path: file.path,
       size: file.size,
-      ...file.hashes.reduce((acc, value) => {
-        acc[value.algorithm] = value.value
-        return acc
-      }, {}),
+      ...Object.fromEntries(
+        file.hashes.map((hash) => [hash.algorithm, hash.value])
+      ),
     }
   }
 }

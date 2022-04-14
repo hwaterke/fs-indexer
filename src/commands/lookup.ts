@@ -1,5 +1,5 @@
 import 'reflect-metadata'
-import {Command, flags} from '@oclif/command'
+import {Command, Flags} from '@oclif/core'
 import {createConnection} from 'typeorm'
 import {getDatabaseConfig} from '../database/config'
 import {IndexerService} from '../services/IndexerService'
@@ -9,8 +9,7 @@ export default class Lookup extends Command {
   static description = 'searches for files within the database'
 
   static flags = {
-    help: flags.help({char: 'h'}),
-    database: flags.string({
+    database: Flags.string({
       char: 'd',
       description: 'database file',
       default: 'fs-index.db',
@@ -19,8 +18,8 @@ export default class Lookup extends Command {
 
   static args = [{name: 'path', required: true}]
 
-  async run() {
-    const {args, flags} = this.parse(Lookup)
+  async run(): Promise<void> {
+    const {args, flags} = await this.parse(Lookup)
 
     const startTime = new Date()
     const connection = await createConnection(getDatabaseConfig(flags.database))

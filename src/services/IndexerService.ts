@@ -38,7 +38,7 @@ export class IndexerService {
     hashesComputed: 0,
   }
 
-  async info(options: InfoOptions) {
+  async info(options: InfoOptions): Promise<void> {
     const fileCount = await this.databaseService.countFiles()
     this.logger.info(`${fileCount} files indexed`)
     const hashCount = await this.databaseService.countHashes()
@@ -69,7 +69,7 @@ export class IndexerService {
     }
   }
 
-  async lookup(path: string) {
+  async lookup(path: string): Promise<void> {
     this.logger.debug(`Lookup ${path}`)
 
     // TODO Handle directories
@@ -79,13 +79,16 @@ export class IndexerService {
     const similarFiles = await this.lookupExistingEntries(path)
     if (similarFiles.length > 0) {
       this.logger.info(`✅ ${path}`)
-      similarFiles.forEach((file) => this.logger.debug(`  ${file.path}`))
+
+      for (const file of similarFiles) {
+        this.logger.debug(`  ${file.path}`)
+      }
     } else {
       this.logger.info(`❌ ${path}`)
     }
   }
 
-  async crawl(path: string, options: CrawlingOptions) {
+  async crawl(path: string, options: CrawlingOptions): Promise<void> {
     this.logger.debug(`Indexing ${path}`)
 
     await walkDir(path, async (filePath) => {
@@ -130,7 +133,7 @@ export class IndexerService {
     )
   }
 
-  async verify(path: string, options: VerifyOptions) {
+  async verify(path: string, options: VerifyOptions): Promise<void> {
     this.logger.debug(`Verifying ${path}`)
     const repo = getRepository(FileEntity)
 
@@ -186,7 +189,7 @@ export class IndexerService {
     path: string,
     hashingAlgorithms: HashingAlgorithm[],
     fileEntity: FileEntity | undefined
-  ) {
+  ): Promise<void> {
     let hashesComputed = false
 
     if (hashingAlgorithms.length > 0) {

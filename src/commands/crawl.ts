@@ -1,5 +1,5 @@
 import 'reflect-metadata'
-import {Command, flags} from '@oclif/command'
+import {Command, Flags} from '@oclif/core'
 import {createConnection} from 'typeorm'
 import {getDatabaseConfig} from '../database/config'
 import {IndexerService} from '../services/IndexerService'
@@ -10,19 +10,18 @@ export default class Crawl extends Command {
   static description = 'index the folder provided'
 
   static flags = {
-    help: flags.help({char: 'h'}),
-    database: flags.string({
+    database: Flags.string({
       char: 'd',
       description: 'database file',
       default: 'fs-index.db',
     }),
-    hashingAlgorithms: flags.string({
+    hashingAlgorithms: Flags.string({
       char: 'a',
       description: 'hashing algorithms to use',
       multiple: true,
       options: Object.values(HashingAlgorithm),
     }),
-    limit: flags.integer({
+    limit: Flags.integer({
       char: 'l',
       description: 'stop after indexing n files',
     }),
@@ -30,8 +29,8 @@ export default class Crawl extends Command {
 
   static args = [{name: 'path', required: true}]
 
-  async run() {
-    const {args, flags} = this.parse(Crawl)
+  async run(): Promise<void> {
+    const {args, flags} = await this.parse(Crawl)
 
     const startTime = new Date()
     const connection = await createConnection(getDatabaseConfig(flags.database))

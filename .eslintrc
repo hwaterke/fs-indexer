@@ -1,10 +1,5 @@
 {
-  "extends": [
-    "eslint:recommended",
-    "oclif",
-    "oclif-typescript",
-    "prettier"
-  ],
+  "extends": ["oclif", "oclif-typescript", "prettier"],
   "rules": {
     "unicorn/filename-case": "off",
     "new-cap": "off",
@@ -12,6 +7,10 @@
     "lines-between-class-members": "off",
     "no-await-in-loop": "off",
     "no-implicit-coercion": "off",
-    "no-return-await": "off"
+    "no-return-await": "off",
+    "padding-line-between-statements": "off",
+    "valid-jsdoc": "off",
+    "max-depth": "off",
+    "no-warning-comments": "off"
   }
 }

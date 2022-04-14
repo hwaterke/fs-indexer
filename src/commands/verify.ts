@@ -1,5 +1,5 @@
 import 'reflect-metadata'
-import {Command, flags} from '@oclif/command'
+import {Command, Flags} from '@oclif/core'
 import {createConnection} from 'typeorm'
 import {IndexerService} from '../services/IndexerService'
 import {getDatabaseConfig} from '../database/config'
@@ -11,23 +11,22 @@ export default class Verify extends Command {
     'verifies that the content of the database is in sync with the file system'
 
   static flags = {
-    help: flags.help({char: 'h'}),
-    database: flags.string({
+    database: Flags.string({
       char: 'd',
       description: 'database file',
       default: 'fs-index.db',
     }),
-    hashingAlgorithms: flags.string({
+    hashingAlgorithms: Flags.string({
       char: 'a',
       description: 'hashing algorithms to use',
       multiple: true,
       options: Object.values(HashingAlgorithm),
     }),
-    limit: flags.integer({
+    limit: Flags.integer({
       char: 'l',
       description: 'stop after indexing n files',
     }),
-    purge: flags.boolean({
+    purge: Flags.boolean({
       char: 'p',
       description: 'deletes files that do not exist anymore from the database',
       default: false,
@@ -36,8 +35,8 @@ export default class Verify extends Command {
 
   static args = [{name: 'path', required: true}]
 
-  async run() {
-    const {args, flags} = this.parse(Verify)
+  async run(): Promise<void> {
+    const {args, flags} = await this.parse(Verify)
 
     const startTime = new Date()
     const connection = await createConnection(getDatabaseConfig(flags.database))

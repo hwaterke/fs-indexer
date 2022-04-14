@@ -9,7 +9,7 @@ export enum HashingAlgorithm {
 export class HashingService {
   private logger = new LoggerService()
 
-  hash(path: string, algorithm: HashingAlgorithm) {
+  hash(path: string, algorithm: HashingAlgorithm): string {
     this.logger.debug(`Computing hash ${algorithm} for ${path}`)
 
     switch (algorithm) {
@@ -20,7 +20,7 @@ export class HashingService {
     }
   }
 
-  private blake3(path: string) {
+  private blake3(path: string): string {
     const result = exec(`b3sum --no-names "${path}"`, {silent: true})
     if (result.code !== 0) {
       throw new Error(`Error will computing BLAKE3 hash: ${result.stderr}`)
@@ -28,7 +28,7 @@ export class HashingService {
     return result.stdout.trim()
   }
 
-  private xxhash(path: string) {
+  private xxhash(path: string): string {
     const result = exec(`xxh128sum "${path}"`, {silent: true})
     if (result.code !== 0) {
       throw new Error(`Error will computing XXHASH hash: ${result.stderr}`)

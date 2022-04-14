@@ -1,13 +1,13 @@
 export class LoggerService {
-  debug(message: string) {
+  debug(message: string): void {
     this.log('debug', message)
   }
 
-  info(message: string) {
+  info(message: string): void {
     this.log('info', message)
   }
 
-  log(level: string, message: string) {
+  log(level: string, message: string): void {
     console.log(`${level}: ${message}`)
   }
 }

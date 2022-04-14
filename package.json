@@ -2,6 +2,9 @@
   "name": "fs-indexer",
   "version": "0.0.1",
   "author": "hwaterke @hwaterke",
+  "repository": "hwaterke/fs-indexer",
+  "homepage": "https://github.com/hwaterke/fs-indexer",
+  "license": "MIT",
   "bin": {
     "fs-indexer": "./bin/run"
   },
@@ -10,49 +13,52 @@
   },
   "files": [
     "/bin",
-    "/lib",
+    "/dist",
     "/npm-shrinkwrap.json",
     "/oclif.manifest.json"
   ],
-  "homepage": "https://github.com/hwaterke/fs-indexer",
-  "license": "MIT",
-  "main": "lib/index.js",
+  "main": "dist/index.js",
   "oclif": {
-    "commands": "./lib/commands",
     "bin": "fs-indexer",
+    "dirname": "fs-indexer",
+    "commands": "./dist/commands",
     "plugins": [
       "@oclif/plugin-help"
     ]
   },
-  "repository": "hwaterke/fs-indexer",
   "scripts": {
-    "format": "prettier --write .",
-    "postpack": "rm -f oclif.manifest.json",
-    "prepack": "rm -rf lib && tsc -b && oclif-dev manifest && oclif-dev readme",
-    "version": "oclif-dev readme && git add README.md"
+    "build": "shx rm -rf dist && tsc -b",
+    "lint": "eslint . --ext .ts --config .eslintrc",
+    "postpack": "shx rm -f oclif.manifest.json",
+    "posttest": "yarn lint",
+    "prepack": "yarn build && oclif manifest && oclif readme",
+    "test": "mocha --forbid-only \"test/**/*.test.ts\"",
+    "version": "oclif readme && git add README.md",
+    "format": "prettier --write ."
   },
   "types": "lib/index.d.ts",
   "dependencies": {
     "@nodelib/fs.walk": "^1.2.8",
-    "@oclif/command": "^1",
-    "@oclif/config": "^1",
-    "@oclif/plugin-help": "^3",
+    "@oclif/core": "^1",
+    "@oclif/plugin-help": "^5",
     "reflect-metadata": "^0.1.13",
-    "shelljs": "^0.8.4",
-    "sqlite3": "^5.0.2",
-    "tslib": "^1",
-    "typeorm": "^0.2.38"
+    "shelljs": "^0.8.5",
+    "sqlite3": "^5.0.3",
+    "typeorm": "^0.2.45"
   },
   "devDependencies": {
-    "@oclif/dev-cli": "^1",
     "@types/node": "^16",
-    "@types/shelljs": "^0.8.9",
-    "eslint": "^5.13",
-    "eslint-config-oclif": "^3.1",
-    "eslint-config-oclif-typescript": "^0.1",
-    "eslint-config-prettier": "^8.3.0",
-    "prettier": "^2.4.1",
-    "ts-node": "^8",
-    "typescript": "^3.3"
+    "@types/shelljs": "^0.8.11",
+    "eslint": "^7.32.0",
+    "eslint-config-oclif": "^4",
+    "eslint-config-oclif-typescript": "^1.0.2",
+    "eslint-config-prettier": "^8.5.0",
+    "globby": "^11",
+    "oclif": "^3",
+    "prettier": "^2.6.2",
+    "shx": "^0.3.3",
+    "ts-node": "^10.7.0",
+    "tslib": "^2.3.1",
+    "typescript": "^4.6.3"
   }
 }

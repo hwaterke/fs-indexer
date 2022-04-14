@@ -4,7 +4,10 @@ import {HashingAlgorithm} from './services/HashingService'
 
 type WalkCallback = (path: string) => Promise<{stop: boolean}>
 
-export const walkDir = async (path: string, callback: WalkCallback) => {
+export const walkDir = async (
+  path: string,
+  callback: WalkCallback
+): Promise<void> => {
   let shouldStop = false
 
   const recursiveWalk = async (directoryPath: string) => {
@@ -38,7 +41,7 @@ export const getHashingAlgorithms = (
   return result as HashingAlgorithm[]
 }
 
-export const readableElapsedTime = (startTime: Date) => {
+export const readableElapsedTime = (startTime: Date): string => {
   const now = new Date()
   const seconds = Math.ceil((now.getTime() - startTime.getTime()) / 1000)
 

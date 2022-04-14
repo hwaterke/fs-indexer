@@ -10,3 +10,5 @@ node_modules
 fs-index.db
 test-files
 *.db
+oclif.manifest.json
+

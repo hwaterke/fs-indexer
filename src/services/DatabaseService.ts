@@ -1,5 +1,5 @@
 import {LoggerService} from './LoggerService'
-import {getManager, getRepository} from 'typeorm'
+import {getRepository} from 'typeorm'
 import {FileEntity} from '../database/entities/FileEntity'
 import {HashEntity} from '../database/entities/HashEntity'
 import {HashingAlgorithm} from './HashingService'
@@ -7,7 +7,7 @@ import {HashingAlgorithm} from './HashingService'
 export class DatabaseService {
   private logger = new LoggerService()
 
-  async findFile(path: string) {
+  async findFile(path: string): Promise<FileEntity | undefined> {
     const repository = getRepository(FileEntity)
 
     return await repository
@@ -17,7 +17,7 @@ export class DatabaseService {
       .getOne()
   }
 
-  async findFilesBySize(size: number) {
+  async findFilesBySize(size: number): Promise<FileEntity[]> {
     const repository = getRepository(FileEntity)
 
     return await repository
@@ -27,7 +27,7 @@ export class DatabaseService {
       .getMany()
   }
 
-  async findAll() {
+  async findAll(): Promise<FileEntity[]> {
     const repository = getRepository(FileEntity)
 
     return await repository
@@ -36,17 +36,17 @@ export class DatabaseService {
       .getMany()
   }
 
-  async countFiles() {
+  async countFiles(): Promise<number> {
     const repository = getRepository(FileEntity)
     return await repository.count()
   }
 
-  async countHashes(algorithm?: HashingAlgorithm) {
+  async countHashes(algorithm?: HashingAlgorithm): Promise<number> {
     const repository = getRepository(HashEntity)
     return await repository.count({algorithm})
   }
 
-  async duplicates() {
+  async duplicates(): Promise<FileEntity[]> {
     const repository = getRepository(FileEntity)
 
     const files = await repository
