@@ -1,13 +1,26 @@
-export class LoggerService {
-  debug(message: string): void {
-    this.log('debug', message)
-  }
+import * as winston from 'winston'
 
-  info(message: string): void {
-    this.log('info', message)
-  }
+const logger = winston.createLogger({
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      ),
+    }),
+  ],
+})
 
-  log(level: string, message: string): void {
-    console.log(`${level}: ${message}`)
-  }
+export const Logger = {
+  debug: (message: string): void => {
+    logger.debug(message)
+  },
+
+  info: (message: string): void => {
+    logger.info(message)
+  },
+
+  setLevel: (level: 'debug' | 'info'): void => {
+    logger.level = level
+  },
 }

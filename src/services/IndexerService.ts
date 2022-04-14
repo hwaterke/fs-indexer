@@ -3,12 +3,12 @@ import {FileEntity} from '../database/entities/FileEntity'
 import {walkDirOrFile} from '../utils'
 import {access, stat, writeFile} from 'node:fs/promises'
 import {constants} from 'node:fs'
-import {LoggerService} from './LoggerService'
 import {DatabaseService} from './DatabaseService'
 import * as nodePath from 'node:path'
 import {HashingAlgorithm, HashingService} from './HashingService'
 import {HashEntity} from '../database/entities/HashEntity'
 import {DuplicateFinderService} from './DuplicateFinderService'
+import {Logger} from './LoggerService'
 
 type CrawlingOptions = {
   limit?: number
@@ -26,7 +26,6 @@ type InfoOptions = {
 }
 
 export class IndexerService {
-  private logger = new LoggerService()
   private databaseService = new DatabaseService()
   private hashingService = new HashingService()
   private duplicateFinder = new DuplicateFinderService()
@@ -40,13 +39,13 @@ export class IndexerService {
 
   async info(options: InfoOptions): Promise<void> {
     const fileCount = await this.databaseService.countFiles()
-    this.logger.info(`${fileCount} files indexed`)
+    Logger.info(`${fileCount} files indexed`)
     const hashCount = await this.databaseService.countHashes()
-    this.logger.info(`${hashCount} hashes`)
+    Logger.info(`${hashCount} hashes`)
 
     for await (const algorithm of Object.values(HashingAlgorithm)) {
       const algoHashCount = await this.databaseService.countHashes(algorithm)
-      this.logger.info(
+      Logger.info(
         `${algoHashCount} hashes (${algorithm}) - ${Math.round(
           (100 * algoHashCount) / fileCount
         )}%`
@@ -55,7 +54,7 @@ export class IndexerService {
 
     if (options.duplicates) {
       const candidates = await this.databaseService.duplicates()
-      this.logger.debug(`${candidates.length} duplicate candidates`)
+      Logger.debug(`${candidates.length} duplicate candidates`)
 
       const duplicates = this.duplicateFinder.getDuplicateGroups(candidates)
 
@@ -70,22 +69,22 @@ export class IndexerService {
   }
 
   async lookup(path: string): Promise<void> {
-    this.logger.debug(`Lookup ${path}`)
+    Logger.debug(`Lookup ${path}`)
 
     await walkDirOrFile(path, async (filePath) => {
       const similarFiles = await this.lookupExistingEntries(filePath)
       if (similarFiles.length > 0) {
         if (similarFiles.length === 1 && similarFiles[0].path === filePath) {
-          this.logger.info(`🆗 ${filePath}`)
+          Logger.info(`🆗 ${filePath}`)
         } else {
-          this.logger.info(`✅ ${filePath}`)
+          Logger.info(`✅ ${filePath}`)
         }
 
         for (const file of similarFiles) {
-          this.logger.debug(`  ${file.path}`)
+          Logger.debug(`  ${file.path}`)
         }
       } else {
-        this.logger.info(`❌ ${filePath}`)
+        Logger.info(`❌ ${filePath}`)
       }
 
       return {stop: false}
@@ -93,7 +92,7 @@ export class IndexerService {
   }
 
   async crawl(path: string, options: CrawlingOptions): Promise<void> {
-    this.logger.debug(`Indexing ${path}`)
+    Logger.debug(`Indexing ${path}`)
 
     await walkDirOrFile(path, async (filePath) => {
       // Is it already indexed?
@@ -104,7 +103,7 @@ export class IndexerService {
       if (existingEntry) {
         await this.hashFile(filePath, options.hashingAlgorithms, existingEntry)
       } else {
-        this.logger.debug(`Indexing ${filePath}`)
+        Logger.debug(`Indexing ${filePath}`)
 
         const metadata = await this.getFileMetadata(filePath)
 
@@ -125,13 +124,13 @@ export class IndexerService {
       }
     })
 
-    this.logger.info(
+    Logger.info(
       `${this.metrics.filesCrawled} files crawled. ${this.metrics.newFilesIndexed} newly indexed. ${this.metrics.filesHashed} files hashed.`
     )
   }
 
   async verify(path: string, options: VerifyOptions): Promise<void> {
-    this.logger.debug(`Verifying ${path}`)
+    Logger.debug(`Verifying ${path}`)
     const repo = getRepository(FileEntity)
 
     const files = await this.databaseService.findAll()
@@ -149,7 +148,7 @@ export class IndexerService {
       try {
         await access(file.path, constants.F_OK)
       } catch {
-        this.logger.info(`File ${file.path} does not exist anymore`)
+        Logger.info(`File ${file.path} does not exist anymore`)
 
         if (options.purge) {
           await repo.remove(file)
@@ -172,7 +171,7 @@ export class IndexerService {
             validatedAt: new Date(),
           })
         } else {
-          this.logger.info(
+          Logger.info(
             `Inconsistent metadata for ${file.path}. ${JSON.stringify(
               metadata
             )} vs ${JSON.stringify(file)}`
@@ -197,16 +196,16 @@ export class IndexerService {
                 }
               )
             } else {
-              this.logger.info(
+              Logger.info(
                 `Inconsistent hash ${hashingAlgorithm} for ${file.path}. ${hash} vs ${existingHash.value}`
               )
             }
           } else {
-            this.logger.info(`Missing hash ${hashingAlgorithm} for ${file}`)
+            Logger.info(`Missing hash ${hashingAlgorithm} for ${file}`)
           }
         }
       } else {
-        this.logger.info(
+        Logger.info(
           `${file.path} has a different size. ${metadata.size} vs ${file.size}`
         )
       }
@@ -253,9 +252,7 @@ export class IndexerService {
     const existingEntries: FileEntity[] = []
 
     const filesWithSameSize = await this.databaseService.findFilesBySize(size)
-    this.logger.debug(
-      `Found ${filesWithSameSize.length} files with the same size`
-    )
+    Logger.debug(`Found ${filesWithSameSize.length} files with the same size`)
 
     for (const file of filesWithSameSize) {
       if (
@@ -263,7 +260,7 @@ export class IndexerService {
         file.hashes.every((hashEntity) => {
           const hash = this.hashingService.hash(path, hashEntity.algorithm)
 
-          this.logger.debug(
+          Logger.debug(
             `Comparing ${hash} with ${hashEntity.value} for ${hashEntity.algorithm}`
           )
 

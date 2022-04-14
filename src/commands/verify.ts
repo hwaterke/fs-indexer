@@ -5,6 +5,7 @@ import {IndexerService} from '../services/IndexerService'
 import {getDatabaseConfig} from '../database/config'
 import {HashingAlgorithm} from '../services/HashingService'
 import {getHashingAlgorithms, readableElapsedTime} from '../utils'
+import {Logger} from '../services/LoggerService'
 
 export default class Verify extends Command {
   static description =
@@ -31,12 +32,19 @@ export default class Verify extends Command {
       description: 'deletes files that do not exist anymore from the database',
       default: false,
     }),
+    debug: Flags.boolean({
+      description: 'enable debug logging',
+    }),
   }
 
   static args = [{name: 'path', required: true}]
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(Verify)
+
+    if (flags.debug) {
+      Logger.setLevel('debug')
+    }
 
     const startTime = new Date()
     const connection = await createConnection(getDatabaseConfig(flags.database))

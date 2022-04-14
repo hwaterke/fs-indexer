@@ -1,10 +1,8 @@
 import {FileEntity} from '../database/entities/FileEntity'
-import {LoggerService} from './LoggerService'
 import {HashingAlgorithm} from './HashingService'
+import {Logger} from './LoggerService'
 
 export class DuplicateFinderService {
-  private logger = new LoggerService()
-
   /**
    * Finds duplicates in a group of files.
    * Returns a list of duplicate groups
@@ -13,7 +11,7 @@ export class DuplicateFinderService {
     const sizeGroups = this.groupBySize(files).filter(
       (group) => group.length > 1
     )
-    this.logger.debug(`${sizeGroups.length} groups of files with same size`)
+    Logger.debug(`${sizeGroups.length} groups of files with same size`)
 
     const unsorted = sizeGroups
       .flatMap((group) => this.groupByHashes(group))

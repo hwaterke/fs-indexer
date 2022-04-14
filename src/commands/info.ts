@@ -4,6 +4,7 @@ import {createConnection} from 'typeorm'
 import {IndexerService} from '../services/IndexerService'
 import {getDatabaseConfig} from '../database/config'
 import {readableElapsedTime} from '../utils'
+import {Logger} from '../services/LoggerService'
 
 export default class Info extends Command {
   static description = 'prints information about the database'
@@ -15,10 +16,17 @@ export default class Info extends Command {
       default: 'fs-index.db',
     }),
     duplicates: Flags.boolean({default: false}),
+    debug: Flags.boolean({
+      description: 'enable debug logging',
+    }),
   }
 
   async run(): Promise<void> {
     const {flags} = await this.parse(Info)
+
+    if (flags.debug) {
+      Logger.setLevel('debug')
+    }
 
     const startTime = new Date()
     const connection = await createConnection(getDatabaseConfig(flags.database))

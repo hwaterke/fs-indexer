@@ -1,5 +1,5 @@
 import {exec} from 'shelljs'
-import {LoggerService} from './LoggerService'
+import {Logger} from './LoggerService'
 
 export enum HashingAlgorithm {
   BLAKE3 = 'BLAKE3',
@@ -7,10 +7,8 @@ export enum HashingAlgorithm {
 }
 
 export class HashingService {
-  private logger = new LoggerService()
-
   hash(path: string, algorithm: HashingAlgorithm): string {
-    this.logger.debug(`Computing hash ${algorithm} for ${path}`)
+    Logger.debug(`Computing hash ${algorithm} for ${path}`)
 
     switch (algorithm) {
       case HashingAlgorithm.BLAKE3:

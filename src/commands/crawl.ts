@@ -5,6 +5,7 @@ import {getDatabaseConfig} from '../database/config'
 import {IndexerService} from '../services/IndexerService'
 import {HashingAlgorithm} from '../services/HashingService'
 import {getHashingAlgorithms, readableElapsedTime} from '../utils'
+import {Logger} from '../services/LoggerService'
 
 export default class Crawl extends Command {
   static description = 'index the folder provided'
@@ -25,12 +26,19 @@ export default class Crawl extends Command {
       char: 'l',
       description: 'stop after indexing n files',
     }),
+    debug: Flags.boolean({
+      description: 'enable debug logging',
+    }),
   }
 
   static args = [{name: 'path', required: true}]
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(Crawl)
+
+    if (flags.debug) {
+      Logger.setLevel('debug')
+    }
 
     const startTime = new Date()
     const connection = await createConnection(getDatabaseConfig(flags.database))

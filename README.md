@@ -53,13 +53,14 @@ index the folder provided
 
 ```
 USAGE
-  $ fs-indexer crawl [PATH] [-d <value>] [-a BLAKE3|XXHASH] [-l <value>]
+  $ fs-indexer crawl [PATH] [-d <value>] [-a BLAKE3|XXHASH] [-l <value>] [--debug]
 
 FLAGS
   -a, --hashingAlgorithms=<option>...  hashing algorithms to use
                                        <options: BLAKE3|XXHASH>
   -d, --database=<value>               [default: fs-index.db] database file
   -l, --limit=<value>                  stop after indexing n files
+  --debug                              enable debug logging
 
 DESCRIPTION
   index the folder provided
@@ -95,10 +96,11 @@ prints information about the database
 
 ```
 USAGE
-  $ fs-indexer info [-d <value>] [--duplicates]
+  $ fs-indexer info [-d <value>] [--duplicates] [--debug]
 
 FLAGS
   -d, --database=<value>  [default: fs-index.db] database file
+  --debug                 enable debug logging
   --duplicates
 
 DESCRIPTION
@@ -114,10 +116,11 @@ searches for files within the database
 
 ```
 USAGE
-  $ fs-indexer lookup [PATH] [-d <value>]
+  $ fs-indexer lookup [PATH] [-d <value>] [--debug]
 
 FLAGS
   -d, --database=<value>  [default: fs-index.db] database file
+  --debug                 enable debug logging
 
 DESCRIPTION
   searches for files within the database
@@ -132,7 +135,7 @@ verifies that the content of the database is in sync with the file system
 
 ```
 USAGE
-  $ fs-indexer verify [PATH] [-d <value>] [-a BLAKE3|XXHASH] [-l <value>] [-p]
+  $ fs-indexer verify [PATH] [-d <value>] [-a BLAKE3|XXHASH] [-l <value>] [-p] [--debug]
 
 FLAGS
   -a, --hashingAlgorithms=<option>...  hashing algorithms to use
@@ -140,6 +143,7 @@ FLAGS
   -d, --database=<value>               [default: fs-index.db] database file
   -l, --limit=<value>                  stop after indexing n files
   -p, --purge                          deletes files that do not exist anymore from the database
+  --debug                              enable debug logging
 
 DESCRIPTION
   verifies that the content of the database is in sync with the file system
