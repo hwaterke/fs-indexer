@@ -19,9 +19,11 @@ export class FileEntity {
   @Column('bigint')
   size!: number
 
+  // Last time some metadata related to the file was changed
   @Column('bigint')
   ctime!: number
 
+  // Last time the file’s content was modified
   @Column('bigint')
   mtime!: number
 
@@ -39,4 +41,8 @@ export class FileEntity {
 
   @UpdateDateColumn({name: 'updated_at'})
   updatedAt!: Date
+
+  // Last time that data was validated
+  @Column('datetime')
+  validatedAt!: Date
 }

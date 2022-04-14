@@ -30,4 +30,8 @@ export class HashEntity {
 
   @UpdateDateColumn({name: 'updated_at'})
   updatedAt!: Date
+
+  // Last time that data was validated
+  @Column('datetime')
+  validatedAt!: Date
 }

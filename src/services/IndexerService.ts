@@ -102,17 +102,10 @@ export class IndexerService {
       } else {
         this.logger.debug(`Indexing ${filePath}`)
 
-        const stats = await stat(filePath)
+        const metadata = await this.getFileMetadata(filePath)
 
         const repo = getRepository(FileEntity)
-        const fileEntity = await repo.save({
-          path: filePath,
-          size: stats.size,
-          ctime: Math.floor(stats.ctimeMs),
-          mtime: Math.floor(stats.mtimeMs),
-          basename: nodePath.basename(filePath),
-          extension: nodePath.extname(filePath),
-        })
+        const fileEntity = await repo.save(metadata)
 
         this.metrics.newFilesIndexed++
 
@@ -158,9 +151,27 @@ export class IndexerService {
       }
 
       // File still exists, validate the stats
-      const stats = await stat(file.path)
+      const metadata = await this.getFileMetadata(file.path)
 
-      if (stats.size === file.size) {
+      if (metadata.size === file.size) {
+        if (
+          metadata.path === file.path &&
+          metadata.basename === file.basename &&
+          metadata.extension === file.extension &&
+          metadata.mtime === file.mtime &&
+          metadata.ctime === file.ctime
+        ) {
+          await getRepository(FileEntity).update(file.uuid, {
+            validatedAt: new Date(),
+          })
+        } else {
+          this.logger.info(
+            `Inconsistent metadata for ${file.path}. ${JSON.stringify(
+              metadata
+            )} vs ${JSON.stringify(file)}`
+          )
+        }
+
         for await (const hashingAlgorithm of options.hashingAlgorithms) {
           const existingHash = file.hashes.find(
             (hash) => hash.algorithm === hashingAlgorithm
@@ -168,7 +179,17 @@ export class IndexerService {
 
           if (existingHash) {
             const hash = this.hashingService.hash(file.path, hashingAlgorithm)
-            if (hash !== existingHash.value) {
+            if (hash === existingHash.value) {
+              await getRepository(HashEntity).update(
+                {
+                  file: {uuid: file.uuid},
+                  algorithm: existingHash.algorithm,
+                },
+                {
+                  validatedAt: new Date(),
+                }
+              )
+            } else {
               this.logger.info(
                 `Inconsistent hash ${hashingAlgorithm} for ${file.path}. ${hash} vs ${existingHash.value}`
               )
@@ -179,7 +200,7 @@ export class IndexerService {
         }
       } else {
         this.logger.info(
-          `${file.path} has a different size. ${stats.size} vs ${file.size}`
+          `${file.path} has a different size. ${metadata.size} vs ${file.size}`
         )
       }
     }
@@ -208,6 +229,7 @@ export class IndexerService {
             file: fileEntity,
             algorithm: hashingAlgorithm,
             value: hash,
+            validatedAt: new Date(),
           })
         }
       }
@@ -247,5 +269,19 @@ export class IndexerService {
     }
 
     return existingEntries
+  }
+
+  private async getFileMetadata(filePath: string) {
+    const stats = await stat(filePath)
+
+    return {
+      path: filePath,
+      size: stats.size,
+      ctime: Math.floor(stats.ctimeMs),
+      mtime: Math.floor(stats.mtimeMs),
+      basename: nodePath.basename(filePath),
+      extension: nodePath.extname(filePath),
+      validatedAt: new Date(),
+    }
   }
 }
