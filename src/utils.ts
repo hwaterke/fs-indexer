@@ -1,5 +1,6 @@
 import {opendir, stat} from 'node:fs/promises'
 import * as nodePath from 'node:path'
+import {homedir} from 'node:os'
 import {HashingAlgorithm} from './services/HashingService'
 
 type WalkCallback = (path: string) => Promise<{stop: boolean}>
@@ -66,4 +67,12 @@ export const readableElapsedTime = (startTime: Date): string => {
   }
 
   return `${seconds} seconds`
+}
+
+export const expandPath = (path: string): string => {
+  if (path.startsWith('~/') || path === '~') {
+    path = path.replace('~', homedir())
+  }
+
+  return nodePath.resolve(path)
 }

@@ -1,6 +1,6 @@
 import {getRepository} from 'typeorm'
 import {FileEntity} from '../database/entities/FileEntity'
-import {walkDirOrFile} from '../utils'
+import {expandPath, walkDirOrFile} from '../utils'
 import {access, stat, writeFile} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import {DatabaseService} from './DatabaseService'
@@ -69,6 +69,7 @@ export class IndexerService {
   }
 
   async lookup(path: string): Promise<void> {
+    path = expandPath(path)
     Logger.debug(`Lookup ${path}`)
 
     await walkDirOrFile(path, async (filePath) => {
@@ -92,6 +93,7 @@ export class IndexerService {
   }
 
   async crawl(path: string, options: CrawlingOptions): Promise<void> {
+    path = expandPath(path)
     Logger.debug(`Indexing ${path}`)
 
     await walkDirOrFile(path, async (filePath) => {
@@ -130,6 +132,7 @@ export class IndexerService {
   }
 
   async verify(path: string, options: VerifyOptions): Promise<void> {
+    path = expandPath(path)
     Logger.debug(`Verifying ${path}`)
     const repo = getRepository(FileEntity)
 
