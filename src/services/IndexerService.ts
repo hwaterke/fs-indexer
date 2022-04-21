@@ -134,84 +134,97 @@ export class IndexerService {
   async verify(path: string, options: VerifyOptions): Promise<void> {
     path = expandPath(path)
     Logger.debug(`Verifying ${path}`)
+
+    const fileCount = await this.databaseService.countFilesInPath({path})
+    Logger.debug(`${fileCount} indexed files in ${path}`)
+
+    const filesToProcess = options.limit
+      ? Math.min(fileCount, options.limit)
+      : fileCount
+
+    while (this.metrics.filesCrawled < filesToProcess) {
+      // Grab next batch of files
+      const files = await this.databaseService.findByValidityInPath({
+        path,
+        count: Math.min(200, filesToProcess - this.metrics.filesCrawled),
+      })
+
+      Logger.debug(`${files.length} files to verify`)
+
+      for (const file of files) {
+        await this.verifyFile(file, options)
+        this.metrics.filesCrawled++
+      }
+    }
+  }
+
+  async verifyFile(file: FileEntity, options: VerifyOptions): Promise<void> {
+    Logger.debug(`${this.metrics.filesCrawled} Verifying ${file.path}`)
     const repo = getRepository(FileEntity)
 
-    const files = await this.databaseService.findAll()
+    try {
+      await access(file.path, constants.F_OK)
+    } catch {
+      Logger.info(`File ${file.path} does not exist anymore`)
 
-    for (const file of files) {
-      if (options.limit && this.metrics.filesCrawled > options.limit) {
-        break
+      if (options.purge) {
+        await repo.remove(file)
       }
-      if (!file.path.startsWith(path)) {
-        continue
-      }
+      return
+    }
 
-      this.metrics.filesCrawled++
+    // File still exists, validate the stats
+    const metadata = await this.getFileMetadata(file.path)
 
-      try {
-        await access(file.path, constants.F_OK)
-      } catch {
-        Logger.info(`File ${file.path} does not exist anymore`)
-
-        if (options.purge) {
-          await repo.remove(file)
-        }
-        continue
-      }
-
-      // File still exists, validate the stats
-      const metadata = await this.getFileMetadata(file.path)
-
-      if (metadata.size === file.size) {
-        if (
-          metadata.path === file.path &&
-          metadata.basename === file.basename &&
-          metadata.extension === file.extension &&
-          metadata.mtime === file.mtime &&
-          metadata.ctime === file.ctime
-        ) {
-          await getRepository(FileEntity).update(file.uuid, {
-            validatedAt: new Date(),
-          })
-        } else {
-          Logger.info(
-            `Inconsistent metadata for ${file.path}. ${JSON.stringify(
-              metadata
-            )} vs ${JSON.stringify(file)}`
-          )
-        }
-
-        for await (const hashingAlgorithm of options.hashingAlgorithms) {
-          const existingHash = file.hashes.find(
-            (hash) => hash.algorithm === hashingAlgorithm
-          )
-
-          if (existingHash) {
-            const hash = this.hashingService.hash(file.path, hashingAlgorithm)
-            if (hash === existingHash.value) {
-              await getRepository(HashEntity).update(
-                {
-                  file: {uuid: file.uuid},
-                  algorithm: existingHash.algorithm,
-                },
-                {
-                  validatedAt: new Date(),
-                }
-              )
-            } else {
-              Logger.info(
-                `Inconsistent hash ${hashingAlgorithm} for ${file.path}. ${hash} vs ${existingHash.value}`
-              )
-            }
-          } else {
-            Logger.info(`Missing hash ${hashingAlgorithm} for ${file}`)
-          }
-        }
+    if (metadata.size === file.size) {
+      if (
+        metadata.path === file.path &&
+        metadata.basename === file.basename &&
+        metadata.extension === file.extension &&
+        metadata.mtime === file.mtime &&
+        metadata.ctime === file.ctime
+      ) {
+        await getRepository(FileEntity).update(file.uuid, {
+          validatedAt: new Date(),
+        })
       } else {
         Logger.info(
-          `${file.path} has a different size. ${metadata.size} vs ${file.size}`
+          `Inconsistent metadata for ${file.path}. ${JSON.stringify(
+            metadata
+          )} vs ${JSON.stringify(file)}`
         )
       }
+
+      for await (const hashingAlgorithm of options.hashingAlgorithms) {
+        const existingHash = file.hashes.find(
+          (hash) => hash.algorithm === hashingAlgorithm
+        )
+
+        if (existingHash) {
+          const hash = this.hashingService.hash(file.path, hashingAlgorithm)
+          if (hash === existingHash.value) {
+            await getRepository(HashEntity).update(
+              {
+                file: {uuid: file.uuid},
+                algorithm: existingHash.algorithm,
+              },
+              {
+                validatedAt: new Date(),
+              }
+            )
+          } else {
+            Logger.info(
+              `Inconsistent hash ${hashingAlgorithm} for ${file.path}. ${hash} vs ${existingHash.value}`
+            )
+          }
+        } else {
+          Logger.info(`Missing hash ${hashingAlgorithm} for ${file}`)
+        }
+      }
+    } else {
+      Logger.info(
+        `${file.path} has a different size. ${metadata.size} vs ${file.size}`
+      )
     }
   }
 

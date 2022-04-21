@@ -1,4 +1,4 @@
-import {getRepository} from 'typeorm'
+import {getRepository, Like} from 'typeorm'
 import {FileEntity} from '../database/entities/FileEntity'
 import {HashEntity} from '../database/entities/HashEntity'
 import {HashingAlgorithm} from './HashingService'
@@ -33,9 +33,36 @@ export class DatabaseService {
       .getMany()
   }
 
+  async findByValidityInPath({
+    count,
+    path,
+  }: {
+    count: number
+    path: string
+  }): Promise<FileEntity[]> {
+    const repository = getRepository(FileEntity)
+
+    return await repository
+      .createQueryBuilder('file')
+      .leftJoinAndSelect('file.hashes', 'hash')
+      .where('file.path like :path', {path: `${path}%`})
+      .take(count)
+      .orderBy('file.validatedAt')
+      .getMany()
+  }
+
   async countFiles(): Promise<number> {
     const repository = getRepository(FileEntity)
     return await repository.count()
+  }
+
+  async countFilesInPath({path}: {path: string}): Promise<number> {
+    const repository = getRepository(FileEntity)
+    return await repository.count({
+      where: {
+        path: Like(`${path}%`),
+      },
+    })
   }
 
   async countHashes(algorithm?: HashingAlgorithm): Promise<number> {
