@@ -263,6 +263,7 @@ export class IndexerService {
   }
 
   private async lookupExistingEntries(path: string): Promise<FileEntity[]> {
+    Logger.debug(`Looking up for entries similar to ${path}`)
     const {size} = await this.getFileMetadata(path)
 
     const existingEntries: FileEntity[] = []
@@ -270,17 +271,19 @@ export class IndexerService {
     const filesWithSameSize = await this.databaseService.findFilesBySize(size)
     Logger.debug(`Found ${filesWithSameSize.length} files with the same size`)
 
+    const hashes: Map<HashingAlgorithm, string> = new Map()
+    const getHash = (algorithm: HashingAlgorithm) => {
+      if (!hashes.has(algorithm)) {
+        hashes.set(algorithm, this.hashingService.hash(path, algorithm))
+      }
+      return hashes.get(algorithm)
+    }
+
     for (const file of filesWithSameSize) {
       if (
         file.hashes.length > 0 &&
         file.hashes.every((hashEntity) => {
-          const hash = this.hashingService.hash(path, hashEntity.algorithm)
-
-          Logger.debug(
-            `Comparing ${hash} with ${hashEntity.value} for ${hashEntity.algorithm}`
-          )
-
-          return hash === hashEntity.value
+          return getHash(hashEntity.algorithm) === hashEntity.value
         })
       ) {
         existingEntries.push(file)
