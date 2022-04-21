@@ -1,7 +1,7 @@
 import {getRepository} from 'typeorm'
 import {FileEntity} from '../database/entities/FileEntity'
 import {expandPath, walkDirOrFile} from '../utils'
-import {access, stat, writeFile} from 'node:fs/promises'
+import {access, stat, writeFile, unlink} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import {DatabaseService} from './DatabaseService'
 import * as nodePath from 'node:path'
@@ -23,6 +23,10 @@ type VerifyOptions = {
 
 type InfoOptions = {
   duplicates: boolean
+}
+
+type LookupOptions = {
+  remove: boolean
 }
 
 export class IndexerService {
@@ -68,17 +72,23 @@ export class IndexerService {
     }
   }
 
-  async lookup(path: string): Promise<void> {
+  async lookup(path: string, options: LookupOptions): Promise<void> {
     path = expandPath(path)
     Logger.debug(`Lookup ${path}`)
 
     await walkDirOrFile(path, async (filePath) => {
       const similarFiles = await this.lookupExistingEntries(filePath)
       if (similarFiles.length > 0) {
-        if (similarFiles.length === 1 && similarFiles[0].path === filePath) {
+        if (similarFiles.some((f) => f.path === filePath)) {
           Logger.info(`🆗 ${filePath}`)
         } else {
           Logger.info(`✅ ${filePath}`)
+          if (options.remove) {
+            Logger.info(
+              `Deleting ${filePath} as similar files were found in the index`
+            )
+            await unlink(filePath)
+          }
         }
 
         for (const file of similarFiles) {

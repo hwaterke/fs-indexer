@@ -18,6 +18,11 @@ export default class Lookup extends Command {
     debug: Flags.boolean({
       description: 'enable debug logging',
     }),
+    remove: Flags.boolean({
+      description:
+        'remove files if similar found in the index. Be careful with this flag. Only hashes are compared, not the file contents.',
+      default: false,
+    }),
   }
 
   static args = [{name: 'path', required: true}]
@@ -33,7 +38,9 @@ export default class Lookup extends Command {
     const connection = await createConnection(getDatabaseConfig(flags.database))
     try {
       const indexer = new IndexerService()
-      await indexer.lookup(args.path)
+      await indexer.lookup(args.path, {
+        remove: flags.remove,
+      })
       console.log(`Operation performed in ${readableElapsedTime(startTime)}`)
     } finally {
       await connection.close()
