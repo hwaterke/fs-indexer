@@ -13,11 +13,13 @@ import {HashingAlgorithm} from '../../services/HashingService'
 @Entity()
 export class HashEntity {
   @ManyToOne(() => FileEntity, (file) => file.hashes, {
-    primary: true,
     onDelete: 'CASCADE',
   })
   @JoinColumn({name: 'file_uuid'})
   file!: FileEntity
+
+  @PrimaryColumn({name: 'file_uuid'})
+  fileUuid!: string
 
   @PrimaryColumn('varchar')
   algorithm!: HashingAlgorithm

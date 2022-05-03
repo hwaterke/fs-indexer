@@ -12,3 +12,4 @@ test-files
 *.db
 oclif.manifest.json
 
+migration-generation.sqlite

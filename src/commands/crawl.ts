@@ -1,11 +1,10 @@
 import 'reflect-metadata'
 import {Command, Flags} from '@oclif/core'
-import {createConnection} from 'typeorm'
-import {getDatabaseConfig} from '../database/config'
 import {IndexerService} from '../services/IndexerService'
 import {HashingAlgorithm} from '../services/HashingService'
 import {getHashingAlgorithms, readableElapsedTime} from '../utils'
 import {Logger} from '../services/LoggerService'
+import {getAppDatabaseSource} from '../database/AppDataSource'
 
 export default class Crawl extends Command {
   static description = 'index the folder provided'
@@ -41,16 +40,17 @@ export default class Crawl extends Command {
     }
 
     const startTime = new Date()
-    const connection = await createConnection(getDatabaseConfig(flags.database))
+    const dataSource = getAppDatabaseSource(flags.database)
+    await dataSource.initialize()
     try {
-      const indexer = new IndexerService()
+      const indexer = new IndexerService(dataSource)
       await indexer.crawl(args.path, {
         limit: flags.limit,
         hashingAlgorithms: getHashingAlgorithms(flags.hashingAlgorithms),
       })
       console.log(`Operation performed in ${readableElapsedTime(startTime)}`)
     } finally {
-      await connection.close()
+      await dataSource.destroy()
     }
   }
 }

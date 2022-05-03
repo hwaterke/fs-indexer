@@ -1,12 +1,11 @@
-import {getRepository} from 'typeorm'
+import {DataSource} from 'typeorm'
 import {FileEntity} from '../database/entities/FileEntity'
 import {expandPath, walkDirOrFile} from '../utils'
-import {access, stat, writeFile, unlink} from 'node:fs/promises'
+import {access, stat, unlink, writeFile} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import {DatabaseService} from './DatabaseService'
 import * as nodePath from 'node:path'
 import {HashingAlgorithm, HashingService} from './HashingService'
-import {HashEntity} from '../database/entities/HashEntity'
 import {DuplicateFinderService} from './DuplicateFinderService'
 import {Logger} from './LoggerService'
 
@@ -30,7 +29,7 @@ type LookupOptions = {
 }
 
 export class IndexerService {
-  private databaseService = new DatabaseService()
+  private databaseService
   private hashingService = new HashingService()
   private duplicateFinder = new DuplicateFinderService()
 
@@ -39,6 +38,10 @@ export class IndexerService {
     newFilesIndexed: 0,
     filesHashed: 0,
     hashesComputed: 0,
+  }
+
+  constructor(datasource: DataSource) {
+    this.databaseService = new DatabaseService(datasource)
   }
 
   async info(options: InfoOptions): Promise<void> {
@@ -119,9 +122,7 @@ export class IndexerService {
 
         const metadata = await this.getFileMetadata(filePath)
 
-        const repo = getRepository(FileEntity)
-        const fileEntity = await repo.save(metadata)
-
+        const fileEntity = await this.databaseService.createFile(metadata)
         this.metrics.newFilesIndexed++
 
         await this.hashFile(filePath, options.hashingAlgorithms, fileEntity)
@@ -170,7 +171,6 @@ export class IndexerService {
 
   async verifyFile(file: FileEntity, options: VerifyOptions): Promise<void> {
     Logger.debug(`${this.metrics.filesCrawled} Verifying ${file.path}`)
-    const repo = getRepository(FileEntity)
 
     try {
       await access(file.path, constants.F_OK)
@@ -178,7 +178,7 @@ export class IndexerService {
       Logger.info(`File ${file.path} does not exist anymore`)
 
       if (options.purge) {
-        await repo.remove(file)
+        await this.databaseService.deleteFile(file)
       }
       return
     }
@@ -194,9 +194,7 @@ export class IndexerService {
         metadata.mtime === file.mtime &&
         metadata.ctime === file.ctime
       ) {
-        await getRepository(FileEntity).update(file.uuid, {
-          validatedAt: new Date(),
-        })
+        await this.databaseService.updateFileValidity(file.uuid)
       } else {
         Logger.info(
           `Inconsistent metadata for ${file.path}. ${JSON.stringify(
@@ -213,14 +211,9 @@ export class IndexerService {
         if (existingHash) {
           const hash = this.hashingService.hash(file.path, hashingAlgorithm)
           if (hash === existingHash.value) {
-            await getRepository(HashEntity).update(
-              {
-                file: {uuid: file.uuid},
-                algorithm: existingHash.algorithm,
-              },
-              {
-                validatedAt: new Date(),
-              }
+            await this.databaseService.updateHashValidity(
+              file.uuid,
+              existingHash.algorithm
             )
           } else {
             Logger.info(
@@ -241,13 +234,11 @@ export class IndexerService {
   private async hashFile(
     path: string,
     hashingAlgorithms: HashingAlgorithm[],
-    fileEntity: FileEntity | undefined
+    fileEntity: FileEntity
   ): Promise<void> {
     let hashesComputed = false
 
     if (hashingAlgorithms.length > 0) {
-      const hr = getRepository(HashEntity)
-
       for await (const hashingAlgorithm of hashingAlgorithms) {
         if (
           !fileEntity?.hashes ||
@@ -257,11 +248,10 @@ export class IndexerService {
           this.metrics.hashesComputed++
           hashesComputed = true
 
-          await hr.save({
-            file: fileEntity,
+          await this.databaseService.createHash({
+            fileUuid: fileEntity!.uuid,
             algorithm: hashingAlgorithm,
-            value: hash,
-            validatedAt: new Date(),
+            hash,
           })
         }
       }

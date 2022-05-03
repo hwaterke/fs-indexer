@@ -1,11 +1,10 @@
 import 'reflect-metadata'
 import {Command, Flags} from '@oclif/core'
-import {createConnection} from 'typeorm'
 import {IndexerService} from '../services/IndexerService'
-import {getDatabaseConfig} from '../database/config'
 import {HashingAlgorithm} from '../services/HashingService'
 import {getHashingAlgorithms, readableElapsedTime} from '../utils'
 import {Logger} from '../services/LoggerService'
+import {getAppDatabaseSource} from '../database/AppDataSource'
 
 export default class Verify extends Command {
   static description =
@@ -47,9 +46,10 @@ export default class Verify extends Command {
     }
 
     const startTime = new Date()
-    const connection = await createConnection(getDatabaseConfig(flags.database))
+    const dataSource = getAppDatabaseSource(flags.database)
+    await dataSource.initialize()
     try {
-      const indexer = new IndexerService()
+      const indexer = new IndexerService(dataSource)
       await indexer.verify(args.path, {
         limit: flags.limit,
         purge: flags.purge,
@@ -57,7 +57,7 @@ export default class Verify extends Command {
       })
       console.log(`Operation performed in ${readableElapsedTime(startTime)}`)
     } finally {
-      await connection.close()
+      await dataSource.destroy()
     }
   }
 }
