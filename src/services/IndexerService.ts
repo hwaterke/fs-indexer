@@ -11,11 +11,13 @@ import {Logger} from './LoggerService'
 
 type CrawlingOptions = {
   limit?: number
+  minutes?: number
   hashingAlgorithms: HashingAlgorithm[]
 }
 
 type VerifyOptions = {
   limit?: number
+  minutes?: number
   hashingAlgorithms: HashingAlgorithm[]
   purge: boolean
 }
@@ -38,6 +40,7 @@ export class IndexerService {
     newFilesIndexed: 0,
     filesHashed: 0,
     hashesComputed: 0,
+    startTimeMillis: Date.now(),
   }
 
   constructor(datasource: DataSource) {
@@ -128,12 +131,16 @@ export class IndexerService {
         await this.hashFile(filePath, options.hashingAlgorithms, fileEntity)
       }
 
+      const shouldStopForLimit =
+        options.limit !== undefined &&
+        Math.max(this.metrics.newFilesIndexed, this.metrics.filesHashed) >=
+          options.limit
+
+      const shouldStopForTime =
+        options.minutes !== undefined && this.elapsedMinutes() > options.minutes
+
       return {
-        stop: !!(
-          options.limit &&
-          Math.max(this.metrics.newFilesIndexed, this.metrics.filesHashed) >=
-            options.limit
-        ),
+        stop: shouldStopForLimit || shouldStopForTime,
       }
     })
 
@@ -165,6 +172,14 @@ export class IndexerService {
       for (const file of files) {
         await this.verifyFile(file, options)
         this.metrics.filesCrawled++
+      }
+
+      // Time limit reached?
+      if (
+        options.minutes !== undefined &&
+        this.elapsedMinutes() > options.minutes
+      ) {
+        break
       }
     }
   }
@@ -305,5 +320,14 @@ export class IndexerService {
       extension: nodePath.extname(filePath),
       validatedAt: new Date(),
     }
+  }
+
+  elapsedSeconds(): number {
+    const now = Date.now()
+    return Math.round((now - this.metrics.startTimeMillis) / 1000)
+  }
+
+  elapsedMinutes(): number {
+    return Math.floor(this.elapsedSeconds() / 60)
   }
 }

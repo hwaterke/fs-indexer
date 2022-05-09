@@ -54,13 +54,14 @@ index the folder provided
 
 ```
 USAGE
-  $ fs-indexer crawl [PATH] [-d <value>] [-a BLAKE3|XXHASH] [-l <value>] [--debug]
+  $ fs-indexer crawl [PATH] [-d <value>] [-a BLAKE3|XXHASH] [-l <value>] [-m <value>] [--debug]
 
 FLAGS
   -a, --hashingAlgorithms=<option>...  hashing algorithms to use
                                        <options: BLAKE3|XXHASH>
   -d, --database=<value>               [default: fs-index.db] database file
   -l, --limit=<value>                  stop after indexing n files
+  -m, --minutes=<value>                stop after n minutes
   --debug                              enable debug logging
 
 DESCRIPTION
@@ -117,11 +118,13 @@ searches for files within the database
 
 ```
 USAGE
-  $ fs-indexer lookup [PATH] [-d <value>] [--debug]
+  $ fs-indexer lookup [PATH] [-d <value>] [--debug] [--remove]
 
 FLAGS
   -d, --database=<value>  [default: fs-index.db] database file
   --debug                 enable debug logging
+  --remove                remove files if similar found in the index. Be careful with this flag. Only hashes are
+                          compared, not the files content.
 
 DESCRIPTION
   searches for files within the database
@@ -136,13 +139,14 @@ verifies that the content of the database is in sync with the file system
 
 ```
 USAGE
-  $ fs-indexer verify [PATH] [-d <value>] [-a BLAKE3|XXHASH] [-l <value>] [-p] [--debug]
+  $ fs-indexer verify [PATH] [-d <value>] [-a BLAKE3|XXHASH] [-l <value>] [-m <value>] [-p] [--debug]
 
 FLAGS
   -a, --hashingAlgorithms=<option>...  hashing algorithms to use
                                        <options: BLAKE3|XXHASH>
   -d, --database=<value>               [default: fs-index.db] database file
   -l, --limit=<value>                  stop after indexing n files
+  -m, --minutes=<value>                stop after n minutes
   -p, --purge                          deletes files that do not exist anymore from the database
   --debug                              enable debug logging
 

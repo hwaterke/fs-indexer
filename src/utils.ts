@@ -50,10 +50,7 @@ export const getHashingAlgorithms = (
   return result as HashingAlgorithm[]
 }
 
-export const readableElapsedTime = (startTime: Date): string => {
-  const now = new Date()
-  const seconds = Math.ceil((now.getTime() - startTime.getTime()) / 1000)
-
+export const humanReadableSeconds = (seconds: number): string => {
   if (seconds > 3600) {
     const hours = Math.floor(seconds / 3600)
     const secondsLeft = seconds % 3600

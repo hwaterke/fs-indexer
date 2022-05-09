@@ -2,7 +2,7 @@ import 'reflect-metadata'
 import {Command, Flags} from '@oclif/core'
 import {IndexerService} from '../services/IndexerService'
 import {HashingAlgorithm} from '../services/HashingService'
-import {getHashingAlgorithms, readableElapsedTime} from '../utils'
+import {getHashingAlgorithms, humanReadableSeconds} from '../utils'
 import {Logger} from '../services/LoggerService'
 import {getAppDatabaseSource} from '../database/AppDataSource'
 
@@ -25,6 +25,10 @@ export default class Crawl extends Command {
       char: 'l',
       description: 'stop after indexing n files',
     }),
+    minutes: Flags.integer({
+      char: 'm',
+      description: 'stop after n minutes',
+    }),
     debug: Flags.boolean({
       description: 'enable debug logging',
     }),
@@ -39,16 +43,20 @@ export default class Crawl extends Command {
       Logger.setLevel('debug')
     }
 
-    const startTime = new Date()
     const dataSource = getAppDatabaseSource(flags.database)
     await dataSource.initialize()
     try {
       const indexer = new IndexerService(dataSource)
       await indexer.crawl(args.path, {
         limit: flags.limit,
+        minutes: flags.minutes,
         hashingAlgorithms: getHashingAlgorithms(flags.hashingAlgorithms),
       })
-      console.log(`Operation performed in ${readableElapsedTime(startTime)}`)
+      console.log(
+        `Operation performed in ${humanReadableSeconds(
+          indexer.elapsedSeconds()
+        )}`
+      )
     } finally {
       await dataSource.destroy()
     }

@@ -1,7 +1,7 @@
 import 'reflect-metadata'
 import {Command, Flags} from '@oclif/core'
 import {IndexerService} from '../services/IndexerService'
-import {readableElapsedTime} from '../utils'
+import {humanReadableSeconds} from '../utils'
 import {Logger} from '../services/LoggerService'
 import {getAppDatabaseSource} from '../database/AppDataSource'
 
@@ -19,7 +19,7 @@ export default class Lookup extends Command {
     }),
     remove: Flags.boolean({
       description:
-        'remove files if similar found in the index. Be careful with this flag. Only hashes are compared, not the file contents.',
+        'remove files if similar found in the index. Be careful with this flag. Only hashes are compared, not the files content.',
       default: false,
     }),
   }
@@ -33,7 +33,6 @@ export default class Lookup extends Command {
       Logger.setLevel('debug')
     }
 
-    const startTime = new Date()
     const dataSource = getAppDatabaseSource(flags.database)
     await dataSource.initialize()
     try {
@@ -41,7 +40,11 @@ export default class Lookup extends Command {
       await indexer.lookup(args.path, {
         remove: flags.remove,
       })
-      console.log(`Operation performed in ${readableElapsedTime(startTime)}`)
+      console.log(
+        `Operation performed in ${humanReadableSeconds(
+          indexer.elapsedSeconds()
+        )}`
+      )
     } finally {
       await dataSource.destroy()
     }
