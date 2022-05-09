@@ -29,7 +29,7 @@ $ npm install -g fs-indexer
 $ fs-indexer COMMAND
 running command...
 $ fs-indexer (--version)
-fs-indexer/0.0.3 darwin-x64 node-v17.3.0
+fs-indexer/0.0.4 darwin-x64 node-v17.3.0
 $ fs-indexer --help [COMMAND]
 USAGE
   $ fs-indexer COMMAND
@@ -69,7 +69,7 @@ DESCRIPTION
 ```
 
 _See code:
-[dist/commands/crawl.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.3/dist/commands/crawl.ts)_
+[dist/commands/crawl.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.4/dist/commands/crawl.ts)_
 
 ## `fs-indexer help [COMMAND]`
 
@@ -110,7 +110,7 @@ DESCRIPTION
 ```
 
 _See code:
-[dist/commands/info.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.3/dist/commands/info.ts)_
+[dist/commands/info.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.4/dist/commands/info.ts)_
 
 ## `fs-indexer lookup PATH`
 
@@ -131,7 +131,7 @@ DESCRIPTION
 ```
 
 _See code:
-[dist/commands/lookup.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.3/dist/commands/lookup.ts)_
+[dist/commands/lookup.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.4/dist/commands/lookup.ts)_
 
 ## `fs-indexer verify PATH`
 
@@ -155,7 +155,7 @@ DESCRIPTION
 ```
 
 _See code:
-[dist/commands/verify.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.3/dist/commands/verify.ts)_
+[dist/commands/verify.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.4/dist/commands/verify.ts)_
 
 <!-- commandsstop -->
 
