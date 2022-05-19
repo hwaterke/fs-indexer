@@ -45,4 +45,16 @@ export class FileEntity {
   // Last time that data was validated
   @Column('datetime')
   validatedAt!: Date
+
+  @Column({nullable: true})
+  make?: string
+
+  @Column({nullable: true})
+  model?: string
+
+  @Column('int', {nullable: true})
+  width?: number
+
+  @Column('int', {nullable: true})
+  height?: number
 }

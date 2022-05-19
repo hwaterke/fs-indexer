@@ -21,6 +21,10 @@ export default class Crawl extends Command {
       multiple: true,
       options: Object.values(HashingAlgorithm),
     }),
+    exif: Flags.boolean({
+      description: 'extract exif data',
+      default: false,
+    }),
     limit: Flags.integer({
       char: 'l',
       description: 'stop after indexing n files',
@@ -51,6 +55,7 @@ export default class Crawl extends Command {
         limit: flags.limit,
         minutes: flags.minutes,
         hashingAlgorithms: getHashingAlgorithms(flags.hashingAlgorithms),
+        includeExif: flags.exif,
       })
       console.log(
         `Operation performed in ${humanReadableSeconds(

@@ -1,6 +1,6 @@
 import {DataSource} from 'typeorm'
 import {FileEntity} from '../database/entities/FileEntity'
-import {expandPath, walkDirOrFile} from '../utils'
+import {expandPath, extractExif, walkDirOrFile} from '../utils'
 import {access, stat, unlink, writeFile} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import {DatabaseService} from './DatabaseService'
@@ -13,6 +13,7 @@ type CrawlingOptions = {
   limit?: number
   minutes?: number
   hashingAlgorithms: HashingAlgorithm[]
+  includeExif: boolean
 }
 
 type VerifyOptions = {
@@ -120,10 +121,16 @@ export class IndexerService {
 
       if (existingEntry) {
         await this.hashFile(filePath, options.hashingAlgorithms, existingEntry)
+        if (options.includeExif) {
+          await this.addMissingExifMetadata({fileEntity: existingEntry})
+        }
       } else {
         Logger.debug(`Indexing ${filePath}`)
 
-        const metadata = await this.getFileMetadata(filePath)
+        const metadata = await this.getFileMetadata({
+          filePath,
+          includeExif: options.includeExif,
+        })
 
         const fileEntity = await this.databaseService.createFile(metadata)
         this.metrics.newFilesIndexed++
@@ -199,7 +206,10 @@ export class IndexerService {
     }
 
     // File still exists, validate the stats
-    const metadata = await this.getFileMetadata(file.path)
+    const metadata = await this.getFileMetadata({
+      filePath: file.path,
+      includeExif: false,
+    })
 
     if (metadata.size === file.size) {
       if (
@@ -279,7 +289,10 @@ export class IndexerService {
 
   private async lookupExistingEntries(path: string): Promise<FileEntity[]> {
     Logger.debug(`Looking up for entries similar to ${path}`)
-    const {size} = await this.getFileMetadata(path)
+    const {size} = await this.getFileMetadata({
+      filePath: path,
+      includeExif: false,
+    })
 
     const existingEntries: FileEntity[] = []
 
@@ -308,7 +321,13 @@ export class IndexerService {
     return existingEntries
   }
 
-  private async getFileMetadata(filePath: string) {
+  private async getFileMetadata({
+    filePath,
+    includeExif,
+  }: {
+    filePath: string
+    includeExif: boolean
+  }) {
     const stats = await stat(filePath)
 
     return {
@@ -319,6 +338,20 @@ export class IndexerService {
       basename: nodePath.basename(filePath),
       extension: nodePath.extname(filePath),
       validatedAt: new Date(),
+      ...(includeExif && (await extractExif(filePath))),
+    }
+  }
+
+  private async addMissingExifMetadata({
+    fileEntity,
+  }: {
+    fileEntity: FileEntity
+  }): Promise<void> {
+    if (fileEntity.width === undefined || fileEntity.width === null) {
+      await this.databaseService.updateFileExifMetadata({
+        fileUuid: fileEntity.uuid,
+        exifMetadata: await extractExif(fileEntity.path),
+      })
     }
   }
 

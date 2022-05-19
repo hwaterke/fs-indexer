@@ -16,9 +16,11 @@
 
 # Installation
 
-For the hashing function, you need to install `b3sum` and `xxh128sum`.
+For the hashing function, you need to install `b3sum` and `xxh128sum`. In order
+to extract exif information from images and videos, you need to install
+`exiftool`.
 
-On a Mac, this can be achieved with `brew install b3sum xxhash`
+On a Mac, this can be achieved with `brew install b3sum xxhash exiftool`.
 
 # Usage
 
@@ -54,7 +56,7 @@ index the folder provided
 
 ```
 USAGE
-  $ fs-indexer crawl [PATH] [-d <value>] [-a BLAKE3|XXHASH] [-l <value>] [-m <value>] [--debug]
+  $ fs-indexer crawl [PATH] [-d <value>] [-a BLAKE3|XXHASH] [--exif] [-l <value>] [-m <value>] [--debug]
 
 FLAGS
   -a, --hashingAlgorithms=<option>...  hashing algorithms to use
@@ -63,6 +65,7 @@ FLAGS
   -l, --limit=<value>                  stop after indexing n files
   -m, --minutes=<value>                stop after n minutes
   --debug                              enable debug logging
+  --exif                               extract exif data
 
 DESCRIPTION
   index the folder provided

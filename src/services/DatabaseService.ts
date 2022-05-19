@@ -2,6 +2,7 @@ import {DataSource, Like} from 'typeorm'
 import {FileEntity} from '../database/entities/FileEntity'
 import {HashEntity} from '../database/entities/HashEntity'
 import {HashingAlgorithm} from './HashingService'
+import {ExifMetadata} from '../utils'
 
 export class DatabaseService {
   constructor(private datasource: DataSource) {}
@@ -11,6 +12,17 @@ export class DatabaseService {
   ): Promise<FileEntity> {
     const repository = this.datasource.getRepository(FileEntity)
     return repository.save(file)
+  }
+
+  async updateFileExifMetadata({
+    fileUuid,
+    exifMetadata,
+  }: {
+    fileUuid: string
+    exifMetadata: ExifMetadata
+  }): Promise<void> {
+    const repository = this.datasource.getRepository(FileEntity)
+    await repository.update(fileUuid, exifMetadata)
   }
 
   async deleteFile(file: FileEntity): Promise<void> {
