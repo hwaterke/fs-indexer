@@ -5,6 +5,7 @@ import {homedir} from 'node:os'
 import {HashingAlgorithm} from './services/HashingService'
 import {exec} from 'shelljs'
 import {Logger} from './services/LoggerService'
+import {DateTime} from 'luxon'
 
 type WalkCallback = (path: string) => Promise<{stop: boolean}>
 
@@ -135,6 +136,7 @@ export type ExifMetadata = {
   model?: string
   width?: number
   height?: number
+  exifDate?: string
 }
 
 const EXIF_EXTENSIONS = new Set([
@@ -157,6 +159,59 @@ const toNumber = (input: string | number | undefined): number | undefined => {
   return input
 }
 
+const EXIF_DATE_TIME_FORMAT = 'yyyyy:MM:dd HH:mm:ss'
+const EXIF_TAG_DATE_TIME_ORIGINAL = 'EXIF:ExifIFD:DateTimeOriginal'
+const EXIF_TAG_QUICKTIME_CREATE_DATE = 'QuickTime:CreateDate'
+const EXIF_TAG_GOPRO_MODEL = 'QuickTime:GoPro:Model'
+
+const extractDateTimeFromExif = ({
+  metadata,
+  timeZone,
+}: {
+  metadata: Record<string, string>
+  timeZone?: string
+}): DateTime | null => {
+  // DateTimeOriginal is the ideal tag to extract from.
+  // It is the local date where the media was taken (in terms of TZ)
+  if (metadata[EXIF_TAG_DATE_TIME_ORIGINAL]) {
+    const date = DateTime.fromFormat(
+      metadata[EXIF_TAG_DATE_TIME_ORIGINAL],
+      EXIF_DATE_TIME_FORMAT
+    )
+
+    if (date.isValid) {
+      return date
+    }
+  }
+
+  // CreateDate is not as good because it is stored in UTC (per specification).
+  // Some companies still store local date time despite the spec e.g. GoPro
+  if (metadata[EXIF_TAG_QUICKTIME_CREATE_DATE]) {
+    if (metadata[EXIF_TAG_GOPRO_MODEL]) {
+      const date = DateTime.fromFormat(
+        metadata[EXIF_TAG_QUICKTIME_CREATE_DATE],
+        EXIF_DATE_TIME_FORMAT
+      )
+      if (date.isValid) {
+        return date
+      }
+    } else {
+      // Assuming UTC
+      const date = DateTime.fromFormat(
+        metadata[EXIF_TAG_QUICKTIME_CREATE_DATE],
+        EXIF_DATE_TIME_FORMAT,
+        {zone: 'utc'}
+      )
+
+      if (date.isValid) {
+        return timeZone ? date.setZone(timeZone) : date.toLocal()
+      }
+    }
+  }
+
+  return null
+}
+
 export const extractExif = async (path: string): Promise<ExifMetadata> => {
   // Skip unknown extensions
   if (!EXIF_EXTENSIONS.has(nodePath.extname(path).toLocaleLowerCase())) {
@@ -165,6 +220,8 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
 
   Logger.debug(`Extracting exif for ${path}`)
   const exif = await extractExifMetadata(path)
+
+  const date = extractDateTimeFromExif({metadata: exif})
 
   return {
     make:
@@ -181,5 +238,6 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
     height: toNumber(
       EXIF_HEIGHT_KEYS.map((k) => exif[k]).find((key) => key !== undefined)
     ),
+    exifDate: date ? date.toFormat('yyyy-MM-dd_HH-mm-ss') : undefined,
   }
 }

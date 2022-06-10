@@ -43,7 +43,7 @@ export class FileEntity {
   updatedAt!: Date
 
   // Last time that data was validated
-  @Column('datetime')
+  @Column('datetime', {name: 'validated_at'})
   validatedAt!: Date
 
   @Column({nullable: true})
@@ -57,4 +57,7 @@ export class FileEntity {
 
   @Column('int', {nullable: true})
   height?: number
+
+  @Column({name: 'exif_date', nullable: true})
+  exifDate?: string
 }
