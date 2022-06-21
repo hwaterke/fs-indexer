@@ -118,6 +118,16 @@ export class DatabaseService {
       .getMany()
   }
 
+  async totalSize(): Promise<number> {
+    const rawResult = await this.datasource
+      .getRepository(FileEntity)
+      .createQueryBuilder('file')
+      .select('SUM(file.size)', 'total_size')
+      .getRawOne<{total_size: number}>()
+
+    return rawResult!.total_size
+  }
+
   async countFiles(): Promise<number> {
     const repository = this.datasource.getRepository(FileEntity)
     return await repository.count()

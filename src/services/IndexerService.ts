@@ -53,6 +53,8 @@ export class IndexerService {
     Logger.info(`${fileCount} files indexed`)
     const hashCount = await this.databaseService.countHashes()
     Logger.info(`${hashCount} hashes`)
+    const totalSize = await this.databaseService.totalSize()
+    Logger.info(`${totalSize} bytes`)
 
     for await (const algorithm of Object.values(HashingAlgorithm)) {
       const algoHashCount = await this.databaseService.countHashes(algorithm)
