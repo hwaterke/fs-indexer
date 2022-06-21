@@ -91,6 +91,26 @@ export class DatabaseService {
       .getMany()
   }
 
+  async findFilesByExifDate(exifDate: string): Promise<FileEntity[]> {
+    const repository = this.datasource.getRepository(FileEntity)
+
+    return await repository
+      .createQueryBuilder('file')
+      .leftJoinAndSelect('file.hashes', 'hash')
+      .where('file.exifDate = :exifDate', {exifDate})
+      .getMany()
+  }
+
+  async findFilesByPrefix(prefix: string): Promise<FileEntity[]> {
+    const repository = this.datasource.getRepository(FileEntity)
+
+    return await repository
+      .createQueryBuilder('file')
+      .leftJoinAndSelect('file.hashes', 'hash')
+      .where('file.basename LIKE :prefix', {prefix: `${prefix}%`})
+      .getMany()
+  }
+
   async findAll(): Promise<FileEntity[]> {
     const repository = this.datasource.getRepository(FileEntity)
 

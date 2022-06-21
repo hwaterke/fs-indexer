@@ -29,6 +29,7 @@ type InfoOptions = {
 
 type LookupOptions = {
   remove: boolean
+  includeExif: boolean
 }
 
 export class IndexerService {
@@ -86,7 +87,14 @@ export class IndexerService {
     Logger.debug(`Lookup ${path}`)
 
     await walkDirOrFile(path, async (filePath) => {
+      Logger.debug(`Looking up ${filePath}`)
+      const metadata = await this.getFileMetadata({
+        filePath,
+        includeExif: options.includeExif,
+      })
+
       const similarFiles = await this.lookupExistingEntries(filePath)
+
       if (similarFiles.length > 0) {
         if (similarFiles.some((f) => f.path === filePath)) {
           Logger.info(`🆗 ${filePath}`)
@@ -105,6 +113,35 @@ export class IndexerService {
         }
       } else {
         Logger.info(`❌ ${filePath}`)
+      }
+
+      // Find similar exif date
+      if (metadata.exifDate) {
+        const similarExifDate = await this.databaseService.findFilesByExifDate(
+          metadata.exifDate
+        )
+        if (similarExifDate.length > 0) {
+          Logger.info(`Files with similar exif date`)
+          for (const file of similarExifDate) {
+            Logger.debug(`  ${file.path}`)
+          }
+        }
+      }
+
+      // Find similar prefix
+      const prefixMatch = nodePath
+        .basename(filePath)
+        .match(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}/)
+      if (prefixMatch) {
+        const similarPrefix = await this.databaseService.findFilesByPrefix(
+          prefixMatch[0]
+        )
+        if (similarPrefix.length > 0) {
+          Logger.info(`Files with similar prefix`)
+          for (const file of similarPrefix) {
+            Logger.debug(`  ${file.path}`)
+          }
+        }
       }
 
       return {stop: false}

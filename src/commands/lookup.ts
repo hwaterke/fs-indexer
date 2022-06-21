@@ -22,6 +22,10 @@ export default class Lookup extends Command {
         'remove files if similar found in the index. Be careful with this flag. Only hashes are compared, not the files content.',
       default: false,
     }),
+    exif: Flags.boolean({
+      description: 'look for files with similar exif date',
+      default: false,
+    }),
   }
 
   static args = [{name: 'path', required: true}]
@@ -39,6 +43,7 @@ export default class Lookup extends Command {
       const indexer = new IndexerService(dataSource)
       await indexer.lookup(args.path, {
         remove: flags.remove,
+        includeExif: flags.exif,
       })
       console.log(
         `Operation performed in ${humanReadableSeconds(
