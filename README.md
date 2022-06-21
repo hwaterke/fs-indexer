@@ -6,11 +6,12 @@
 [![License](https://img.shields.io/npm/l/fs-indexer.svg)](https://github.com/hwaterke/fs-indexer/blob/master/package.json)
 
 <!-- toc -->
-* [fs-indexer](#fs-indexer)
-* [Installation](#installation)
-* [Usage](#usage)
-* [Commands](#commands)
-* [Development](#development)
+
+- [fs-indexer](#fs-indexer)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Commands](#commands)
+- [Development](#development)
 <!-- tocstop -->
 
 # Installation
@@ -24,6 +25,7 @@ On a Mac, this can be achieved with `brew install b3sum xxhash exiftool`.
 # Usage
 
 <!-- usage -->
+
 ```sh-session
 $ npm install -g fs-indexer
 $ fs-indexer COMMAND
@@ -35,16 +37,18 @@ USAGE
   $ fs-indexer COMMAND
 ...
 ```
+
 <!-- usagestop -->
 
 # Commands
 
 <!-- commands -->
-* [`fs-indexer crawl PATH`](#fs-indexer-crawl-path)
-* [`fs-indexer help [COMMAND]`](#fs-indexer-help-command)
-* [`fs-indexer info`](#fs-indexer-info)
-* [`fs-indexer lookup PATH`](#fs-indexer-lookup-path)
-* [`fs-indexer verify PATH`](#fs-indexer-verify-path)
+
+- [`fs-indexer crawl PATH`](#fs-indexer-crawl-path)
+- [`fs-indexer help [COMMAND]`](#fs-indexer-help-command)
+- [`fs-indexer info`](#fs-indexer-info)
+- [`fs-indexer lookup PATH`](#fs-indexer-lookup-path)
+- [`fs-indexer verify PATH`](#fs-indexer-verify-path)
 
 ## `fs-indexer crawl PATH`
 
@@ -67,7 +71,8 @@ DESCRIPTION
   index the folder provided
 ```
 
-_See code: [dist/commands/crawl.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.6/dist/commands/crawl.ts)_
+_See code:
+[dist/commands/crawl.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.6/dist/commands/crawl.ts)_
 
 ## `fs-indexer help [COMMAND]`
 
@@ -87,7 +92,8 @@ DESCRIPTION
   Display help for fs-indexer.
 ```
 
-_See code: [@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v5.1.12/src/commands/help.ts)_
+_See code:
+[@oclif/plugin-help](https://github.com/oclif/plugin-help/blob/v5.1.12/src/commands/help.ts)_
 
 ## `fs-indexer info`
 
@@ -106,7 +112,8 @@ DESCRIPTION
   prints information about the database
 ```
 
-_See code: [dist/commands/info.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.6/dist/commands/info.ts)_
+_See code:
+[dist/commands/info.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.6/dist/commands/info.ts)_
 
 ## `fs-indexer lookup PATH`
 
@@ -114,11 +121,12 @@ searches for files within the database
 
 ```
 USAGE
-  $ fs-indexer lookup [PATH] [-d <value>] [--debug] [--remove]
+  $ fs-indexer lookup [PATH] [-d <value>] [--debug] [--remove] [--exif]
 
 FLAGS
   -d, --database=<value>  [default: fs-index.db] database file
   --debug                 enable debug logging
+  --exif                  look for files with similar exif date
   --remove                remove files if similar found in the index. Be careful with this flag. Only hashes are
                           compared, not the files content.
 
@@ -126,7 +134,8 @@ DESCRIPTION
   searches for files within the database
 ```
 
-_See code: [dist/commands/lookup.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.6/dist/commands/lookup.ts)_
+_See code:
+[dist/commands/lookup.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.6/dist/commands/lookup.ts)_
 
 ## `fs-indexer verify PATH`
 
@@ -149,7 +158,9 @@ DESCRIPTION
   verifies that the content of the database is in sync with the file system
 ```
 
-_See code: [dist/commands/verify.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.6/dist/commands/verify.ts)_
+_See code:
+[dist/commands/verify.ts](https://github.com/hwaterke/fs-indexer/blob/v0.0.6/dist/commands/verify.ts)_
+
 <!-- commandsstop -->
 
 # Development
