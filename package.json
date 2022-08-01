@@ -39,7 +39,7 @@
   "types": "lib/index.d.ts",
   "dependencies": {
     "@nodelib/fs.walk": "^1.2.8",
-    "@oclif/core": "^1.9.3",
+    "@oclif/core": "^1.13.0",
     "@oclif/plugin-help": "^5",
     "luxon": "^2.4.0",
     "reflect-metadata": "^0.1.13",
