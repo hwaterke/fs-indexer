@@ -41,7 +41,7 @@
     "@nodelib/fs.walk": "^1.2.8",
     "@oclif/core": "^1.9.3",
     "@oclif/plugin-help": "^5",
-    "luxon": "^2.4.0",
+    "luxon": "^3.0.3",
     "reflect-metadata": "^0.1.13",
     "shelljs": "^0.8.5",
     "sqlite3": "^5.0.8",
@@ -49,7 +49,7 @@
     "winston": "^3.7.2"
   },
   "devDependencies": {
-    "@types/luxon": "^2.3.2",
+    "@types/luxon": "^3.0.1",
     "@types/node": "^16",
     "@types/shelljs": "^0.8.11",
     "eslint": "^7.32.0",
