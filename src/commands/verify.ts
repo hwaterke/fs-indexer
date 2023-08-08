@@ -1,5 +1,5 @@
 import 'reflect-metadata'
-import {Command, Flags} from '@oclif/core'
+import {Args, Command, Flags} from '@oclif/core'
 import {IndexerService} from '../services/IndexerService'
 import {HashingAlgorithm} from '../services/HashingService'
 import {getHashingAlgorithms, humanReadableSeconds} from '../utils'
@@ -40,7 +40,9 @@ export default class Verify extends Command {
     }),
   }
 
-  static args = [{name: 'path', required: true}]
+  static args = {
+    path: Args.string({required: true}),
+  }
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(Verify)

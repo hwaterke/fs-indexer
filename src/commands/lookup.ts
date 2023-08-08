@@ -1,5 +1,5 @@
 import 'reflect-metadata'
-import {Command, Flags} from '@oclif/core'
+import {Args, Command, Flags} from '@oclif/core'
 import {IndexerService} from '../services/IndexerService'
 import {humanReadableSeconds} from '../utils'
 import {Logger} from '../services/LoggerService'
@@ -28,7 +28,9 @@ export default class Lookup extends Command {
     }),
   }
 
-  static args = [{name: 'path', required: true}]
+  static args = {
+    path: Args.string({required: true}),
+  }
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(Lookup)
