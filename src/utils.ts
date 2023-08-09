@@ -131,12 +131,17 @@ const EXIF_HEIGHT_KEYS = [
   'File:ImageHeight',
 ]
 
+const EXIF_LIVE_PHOTO_UUID_PHOTO = 'MakerNotes:Apple:MediaGroupUUID'
+const EXIF_LIVE_PHOTO_UUID_VIDEO = 'QuickTime:Keys:ContentIdentifier'
+
 export type ExifMetadata = {
   make?: string
   model?: string
   width?: number
   height?: number
   exifDate?: string
+  livePhotoSource?: string
+  livePhotoTarget?: string
 }
 
 const EXIF_EXTENSIONS = new Set([
@@ -239,5 +244,7 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
       EXIF_HEIGHT_KEYS.map((k) => exif[k]).find((key) => key !== undefined)
     ),
     exifDate: date ? date.toFormat('yyyy-MM-dd_HH-mm-ss') : undefined,
+    livePhotoSource: exif[EXIF_LIVE_PHOTO_UUID_PHOTO],
+    livePhotoTarget: exif[EXIF_LIVE_PHOTO_UUID_VIDEO],
   }
 }

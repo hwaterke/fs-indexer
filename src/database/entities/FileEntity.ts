@@ -60,4 +60,10 @@ export class FileEntity {
 
   @Column({name: 'exif_date', nullable: true})
   exifDate?: string
+
+  @Column({name: 'live_photo_source', nullable: true})
+  livePhotoSource?: string
+
+  @Column({name: 'live_photo_target', nullable: true})
+  livePhotoTarget?: string
 }
