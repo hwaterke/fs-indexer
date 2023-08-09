@@ -6,6 +6,7 @@ import {HashingAlgorithm} from './services/HashingService'
 import {exec} from 'shelljs'
 import {Logger} from './services/LoggerService'
 import {DateTime} from 'luxon'
+import {EXIF_TAGS, ExiftoolMetadata} from './types/exif'
 
 type WalkCallback = (path: string) => Promise<{stop: boolean}>
 
@@ -101,7 +102,7 @@ export const ensureFile = async (path: string): Promise<void> => {
  */
 export const extractExifMetadata = async (
   path: string
-): Promise<Record<string, string>> => {
+): Promise<ExiftoolMetadata> => {
   await ensureFile(path)
   const result = exec(`exiftool -G0:1 -json "${path}"`, {silent: true})
   return JSON.parse(result)[0]
@@ -130,9 +131,6 @@ const EXIF_HEIGHT_KEYS = [
   'PNG:ImageHeight',
   'File:ImageHeight',
 ]
-
-const EXIF_LIVE_PHOTO_UUID_PHOTO = 'MakerNotes:Apple:MediaGroupUUID'
-const EXIF_LIVE_PHOTO_UUID_VIDEO = 'QuickTime:Keys:ContentIdentifier'
 
 export type ExifMetadata = {
   make?: string
@@ -164,26 +162,35 @@ const toNumber = (input: string | number | undefined): number | undefined => {
   return input
 }
 
-const EXIF_DATE_TIME_FORMAT = 'yyyyy:MM:dd HH:mm:ss'
-const EXIF_TAG_DATE_TIME_ORIGINAL = 'EXIF:ExifIFD:DateTimeOriginal'
-const EXIF_TAG_QUICKTIME_CREATE_DATE = 'QuickTime:CreateDate'
-const EXIF_TAG_GOPRO_MODEL = 'QuickTime:GoPro:Model'
+export const EXIF_DATE_TIME_FORMAT = 'yyyy:MM:dd HH:mm:ss'
+export const EXIF_DATE_TIME_FORMAT_WITH_TZ = 'yyyy:MM:dd HH:mm:ssZZ'
 
 const extractDateTimeFromExif = ({
   metadata,
   timeZone,
+  fileTimeFallback,
 }: {
-  metadata: Record<string, string>
+  metadata: ExiftoolMetadata
   timeZone?: string
+  fileTimeFallback: boolean
 }): DateTime | null => {
   // DateTimeOriginal is the ideal tag to extract from.
   // It is the local date where the media was taken (in terms of TZ)
-  if (metadata[EXIF_TAG_DATE_TIME_ORIGINAL]) {
-    const date = DateTime.fromFormat(
-      metadata[EXIF_TAG_DATE_TIME_ORIGINAL],
-      EXIF_DATE_TIME_FORMAT
-    )
+  const dateTimeOriginal = metadata[EXIF_TAGS.DATE_TIME_ORIGINAL]
+  if (dateTimeOriginal) {
+    const date = DateTime.fromFormat(dateTimeOriginal, EXIF_DATE_TIME_FORMAT)
+    if (date.isValid) {
+      return date
+    }
+  }
 
+  // Creation date is the ideal tag for videos as it contains the timezone offset.
+  const creationDate = metadata[EXIF_TAGS.QUICKTIME_CREATION_DATE]
+  if (creationDate) {
+    const date = DateTime.fromFormat(
+      creationDate,
+      EXIF_DATE_TIME_FORMAT_WITH_TZ
+    )
     if (date.isValid) {
       return date
     }
@@ -191,25 +198,35 @@ const extractDateTimeFromExif = ({
 
   // CreateDate is not as good because it is stored in UTC (per specification).
   // Some companies still store local date time despite the spec e.g. GoPro
-  if (metadata[EXIF_TAG_QUICKTIME_CREATE_DATE]) {
-    if (metadata[EXIF_TAG_GOPRO_MODEL]) {
-      const date = DateTime.fromFormat(
-        metadata[EXIF_TAG_QUICKTIME_CREATE_DATE],
-        EXIF_DATE_TIME_FORMAT
-      )
+  const createDate = metadata[EXIF_TAGS.QUICKTIME_CREATE_DATE]
+  if (createDate) {
+    if (metadata[EXIF_TAGS.GOPRO_MODEL]) {
+      const date = DateTime.fromFormat(createDate, EXIF_DATE_TIME_FORMAT)
       if (date.isValid) {
         return date
       }
     } else {
       // Assuming UTC
-      const date = DateTime.fromFormat(
-        metadata[EXIF_TAG_QUICKTIME_CREATE_DATE],
-        EXIF_DATE_TIME_FORMAT,
-        {zone: 'utc'}
-      )
+      const date = DateTime.fromFormat(createDate, EXIF_DATE_TIME_FORMAT, {
+        zone: 'utc',
+      })
 
       if (date.isValid) {
         return timeZone ? date.setZone(timeZone) : date.toLocal()
+      }
+    }
+  }
+
+  if (fileTimeFallback) {
+    const fileModifyDate = metadata[EXIF_TAGS.FILE_MODIFICATION_DATE]
+    if (fileModifyDate) {
+      const date = DateTime.fromFormat(
+        fileModifyDate,
+        EXIF_DATE_TIME_FORMAT_WITH_TZ
+      )
+
+      if (date.isValid) {
+        return date
       }
     }
   }
@@ -226,17 +243,23 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
   Logger.debug(`Extracting exif for ${path}`)
   const exif = await extractExifMetadata(path)
 
-  const date = extractDateTimeFromExif({metadata: exif})
+  const date = extractDateTimeFromExif({
+    metadata: exif,
+    fileTimeFallback: false,
+  })
 
   return {
     make:
-      exif[EXIF_IMAGE_MAKE] ||
-      exif[EXIF_VIDEO_MAKE] ||
-      (exif['QuickTime:GoPro:Model'] && 'GoPro') ||
-      (exif['QuickTime:Track1:HandlerDescription'] === '\u0010DJI.AVC'
+      (exif[EXIF_IMAGE_MAKE] as string) ||
+      (exif[EXIF_VIDEO_MAKE] as string) ||
+      (exif[EXIF_TAGS.GOPRO_MODEL] && 'GoPro') ||
+      ((exif['QuickTime:Track1:HandlerDescription'] as string) ===
+      '\u0010DJI.AVC'
         ? 'DJI'
         : undefined),
-    model: EXIF_MODEL_KEYS.map((k) => exif[k]).find((key) => key !== undefined),
+    model: EXIF_MODEL_KEYS.map((k) => exif[k]).find(
+      (key) => key !== undefined
+    ) as string | undefined,
     width: toNumber(
       EXIF_WIDTH_KEYS.map((k) => exif[k]).find((key) => key !== undefined)
     ),
@@ -244,7 +267,7 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
       EXIF_HEIGHT_KEYS.map((k) => exif[k]).find((key) => key !== undefined)
     ),
     exifDate: date ? date.toFormat('yyyy-MM-dd_HH-mm-ss') : undefined,
-    livePhotoSource: exif[EXIF_LIVE_PHOTO_UUID_PHOTO],
-    livePhotoTarget: exif[EXIF_LIVE_PHOTO_UUID_VIDEO],
+    livePhotoSource: exif[EXIF_TAGS.LIVE_PHOTO_UUID_PHOTO],
+    livePhotoTarget: exif[EXIF_TAGS.LIVE_PHOTO_UUID_VIDEO],
   }
 }
