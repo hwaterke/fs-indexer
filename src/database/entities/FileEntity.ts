@@ -66,4 +66,10 @@ export class FileEntity {
 
   @Column({name: 'live_photo_target', nullable: true})
   livePhotoTarget?: string
+
+  @Column({name: 'latitude', nullable: true})
+  latitude?: number
+
+  @Column({name: 'longitude', nullable: true})
+  longitude?: number
 }

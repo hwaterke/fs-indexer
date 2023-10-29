@@ -5,6 +5,7 @@ import {InitialMigration1651605236637} from './migrations/1651605236637-InitialM
 import {ExifMigration1652798832847} from './migrations/1652798832847-ExifMigration'
 import {ExifDateMigration1654705239151} from './migrations/1654705239151-ExifDateMigration'
 import {LivePhotoMigration1691586419841} from './migrations/1691586419841-LivePhotoMigration'
+import {GpsMigration1697658019379} from './migrations/1697658019379-GpsMigration'
 
 let AppDataSource: DataSource | null = null
 
@@ -21,6 +22,7 @@ export const getAppDatabaseSource = (databasePath: string): DataSource => {
         ExifMigration1652798832847,
         ExifDateMigration1654705239151,
         LivePhotoMigration1691586419841,
+        GpsMigration1697658019379,
       ],
       migrationsRun: true,
       subscribers: [],
