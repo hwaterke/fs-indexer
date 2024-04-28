@@ -1,7 +1,6 @@
 {
   "extends": ["oclif", "oclif-typescript", "prettier"],
   "rules": {
-    "unicorn/filename-case": "off",
     "new-cap": "off",
     "node/no-missing-import": "off",
     "lines-between-class-members": "off",
