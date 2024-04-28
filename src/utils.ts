@@ -7,6 +7,8 @@ import {exec} from 'shelljs'
 import {Logger} from './services/LoggerService'
 import {DateTime} from 'luxon'
 import {EXIF_TAGS, ExiftoolMetadata} from './types/exif'
+import {ExiftoolService} from './services/ExiftoolService'
+import {FfmpegService} from './services/FfmpegService'
 
 type WalkCallback = (path: string) => Promise<{stop: boolean}>
 
@@ -140,6 +142,8 @@ export type ExifMetadata = {
   exifDate?: string
   livePhotoSource?: string
   livePhotoTarget?: string
+  latitude?: number
+  longitude?: number
 }
 
 const EXIF_EXTENSIONS = new Set([
@@ -162,8 +166,20 @@ const toNumber = (input: string | number | undefined): number | undefined => {
   return input
 }
 
+export const TZ_OFFSET_REGEX = /^[+-]\d{2}:\d{2}$/
+export const EXIF_DATE_TIME_REGEX = /^\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}$/
+export const EXIF_DATE_TIME_WITH_TZ_REGEX =
+  /^\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/
+export const EXIF_DATE_TIME_WITH_UTC_REGEX =
+  /^\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}Z$/
+export const EXIF_DATE_TIME_SUBSEC_WITH_TZ_REGEX =
+  /^\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}\.\d{2}[+-]\d{2}:\d{2}$/
+
 export const EXIF_DATE_TIME_FORMAT = 'yyyy:MM:dd HH:mm:ss'
 export const EXIF_DATE_TIME_FORMAT_WITH_TZ = 'yyyy:MM:dd HH:mm:ssZZ'
+export const EXIF_DATE_TIME_SUBSEC_FORMAT = 'yyyy:MM:dd HH:mm:ss.uu'
+export const EXIF_DATE_TIME_SUBSEC_FORMAT_WITH_TZ = 'yyyy:MM:dd HH:mm:ss.uuZZ'
+export const EXIF_OFFSET_FORMAT = 'ZZ'
 
 const extractDateTimeFromExif = ({
   metadata,
@@ -248,6 +264,22 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
     fileTimeFallback: false,
   })
 
+  // Extract Gps position
+  const service = new ExiftoolService({debug: true})
+  let gps = await service.extractGpsExifMetadata(path)
+
+  if (
+    gps === null &&
+    ['.mov', '.mp4'].includes(nodePath.extname(path).toLowerCase())
+  ) {
+    const ffmpegService = new FfmpegService({debug: true})
+    gps = await ffmpegService.extractGpsCoordinatesFromSubtitleFile(path)
+
+    if (gps === null) {
+      gps = await ffmpegService.extractGpsCoordinatesFromSubtitles(path)
+    }
+  }
+
   return {
     make:
       (exif[EXIF_IMAGE_MAKE] as string) ||
@@ -269,5 +301,7 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
     exifDate: date ? date.toFormat('yyyy-MM-dd_HH-mm-ss') : undefined,
     livePhotoSource: exif[EXIF_TAGS.LIVE_PHOTO_UUID_PHOTO],
     livePhotoTarget: exif[EXIF_TAGS.LIVE_PHOTO_UUID_VIDEO],
+    latitude: gps?.latitude,
+    longitude: gps?.longitude,
   }
 }
