@@ -1,5 +1,8 @@
-import {exec} from 'shelljs'
-import {Logger} from './LoggerService'
+import {Logger} from './LoggerService.js'
+import {exec as callbackExec} from 'node:child_process'
+import {promisify} from 'node:util'
+
+const exec = promisify(callbackExec)
 
 export enum HashingAlgorithm {
   BLAKE3 = 'BLAKE3',
@@ -7,30 +10,26 @@ export enum HashingAlgorithm {
 }
 
 export class HashingService {
-  hash(path: string, algorithm: HashingAlgorithm): string {
+  async hash(path: string, algorithm: HashingAlgorithm): Promise<string> {
     Logger.debug(`Computing hash ${algorithm} for ${path}`)
 
     switch (algorithm) {
-      case HashingAlgorithm.BLAKE3:
+      case HashingAlgorithm.BLAKE3: {
         return this.blake3(path)
-      case HashingAlgorithm.XXHASH:
+      }
+      case HashingAlgorithm.XXHASH: {
         return this.xxhash(path)
+      }
     }
   }
 
-  private blake3(path: string): string {
-    const result = exec(`b3sum --no-names "${path}"`, {silent: true})
-    if (result.code !== 0) {
-      throw new Error(`Error will computing BLAKE3 hash: ${result.stderr}`)
-    }
-    return result.stdout.trim()
+  private async blake3(path: string): Promise<string> {
+    const {stdout} = await exec(`b3sum --no-names "${path}"`)
+    return stdout.trim()
   }
 
-  private xxhash(path: string): string {
-    const result = exec(`xxh128sum "${path}"`, {silent: true})
-    if (result.code !== 0) {
-      throw new Error(`Error will computing XXHASH hash: ${result.stderr}`)
-    }
-    return result.stdout.split(/\s+/)[0].trim()
+  private async xxhash(path: string): Promise<string> {
+    const {stdout} = await exec(`xxh128sum "${path}"`)
+    return stdout.split(/\s+/)[0].trim()
   }
 }

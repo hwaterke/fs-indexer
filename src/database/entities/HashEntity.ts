@@ -5,10 +5,11 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryColumn,
+  Relation,
   UpdateDateColumn,
 } from 'typeorm'
-import {FileEntity} from './FileEntity'
-import {HashingAlgorithm} from '../../services/HashingService'
+import {FileEntity} from './FileEntity.js'
+import {HashingAlgorithm} from '../../services/HashingService.js'
 
 @Entity()
 export class HashEntity {
@@ -16,7 +17,7 @@ export class HashEntity {
     onDelete: 'CASCADE',
   })
   @JoinColumn({name: 'file_uuid'})
-  file!: FileEntity
+  file!: Relation<FileEntity>
 
   @PrimaryColumn({name: 'file_uuid'})
   fileUuid!: string

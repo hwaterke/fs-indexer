@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import {MigrationInterface, QueryRunner} from 'typeorm'
 
 export class GpsMigration1697658019379 implements MigrationInterface {
-    name = 'GpsMigration1697658019379'
+  name = 'GpsMigration1697658019379'
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             CREATE TABLE "temporary_file_entity" (
                 "uuid" varchar PRIMARY KEY NOT NULL,
                 "path" varchar NOT NULL,
@@ -27,8 +27,8 @@ export class GpsMigration1697658019379 implements MigrationInterface {
                 "longitude" integer,
                 CONSTRAINT "UQ_492bdbc663862a2b928e96f0e4d" UNIQUE ("path")
             )
-        `);
-        await queryRunner.query(`
+        `)
+    await queryRunner.query(`
             INSERT INTO "temporary_file_entity"(
                     "uuid",
                     "path",
@@ -66,22 +66,22 @@ export class GpsMigration1697658019379 implements MigrationInterface {
                 "live_photo_source",
                 "live_photo_target"
             FROM "file_entity"
-        `);
-        await queryRunner.query(`
+        `)
+    await queryRunner.query(`
             DROP TABLE "file_entity"
-        `);
-        await queryRunner.query(`
+        `)
+    await queryRunner.query(`
             ALTER TABLE "temporary_file_entity"
                 RENAME TO "file_entity"
-        `);
-    }
+        `)
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             ALTER TABLE "file_entity"
                 RENAME TO "temporary_file_entity"
-        `);
-        await queryRunner.query(`
+        `)
+    await queryRunner.query(`
             CREATE TABLE "file_entity" (
                 "uuid" varchar PRIMARY KEY NOT NULL,
                 "path" varchar NOT NULL,
@@ -102,8 +102,8 @@ export class GpsMigration1697658019379 implements MigrationInterface {
                 "live_photo_target" varchar,
                 CONSTRAINT "UQ_492bdbc663862a2b928e96f0e4d" UNIQUE ("path")
             )
-        `);
-        await queryRunner.query(`
+        `)
+    await queryRunner.query(`
             INSERT INTO "file_entity"(
                     "uuid",
                     "path",
@@ -141,10 +141,9 @@ export class GpsMigration1697658019379 implements MigrationInterface {
                 "live_photo_source",
                 "live_photo_target"
             FROM "temporary_file_entity"
-        `);
-        await queryRunner.query(`
+        `)
+    await queryRunner.query(`
             DROP TABLE "temporary_file_entity"
-        `);
-    }
-
+        `)
+  }
 }

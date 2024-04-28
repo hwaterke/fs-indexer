@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm'
-import {HashEntity} from './HashEntity'
+import {HashEntity} from './HashEntity.js'
 
 @Entity()
 export class FileEntity {

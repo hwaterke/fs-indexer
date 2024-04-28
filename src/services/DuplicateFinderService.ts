@@ -1,6 +1,6 @@
-import {FileEntity} from '../database/entities/FileEntity'
-import {HashingAlgorithm} from './HashingService'
-import {Logger} from './LoggerService'
+import {FileEntity} from '../database/entities/FileEntity.js'
+import {HashingAlgorithm} from './HashingService.js'
+import {Logger} from './LoggerService.js'
 
 export class DuplicateFinderService {
   /**

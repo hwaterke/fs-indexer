@@ -8,9 +8,9 @@ import {
   EXIF_DATE_TIME_SUBSEC_WITH_TZ_REGEX,
   EXIF_DATE_TIME_WITH_TZ_REGEX,
   TZ_OFFSET_REGEX,
-} from '../utils'
+} from '../utils.js'
 import {DateTime} from 'luxon'
-import {ExiftoolMetadata} from '../types/exif'
+import {ExiftoolMetadata} from '../types/exif.js'
 
 const exec = promisify(callbackExec)
 

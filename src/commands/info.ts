@@ -1,9 +1,9 @@
 import 'reflect-metadata'
 import {Command, Flags} from '@oclif/core'
-import {IndexerService} from '../services/IndexerService'
-import {humanReadableSeconds} from '../utils'
-import {Logger} from '../services/LoggerService'
-import {getAppDatabaseSource} from '../database/AppDataSource'
+import {IndexerService} from '../services/IndexerService.js'
+import {humanReadableSeconds} from '../utils.js'
+import {Logger} from '../services/LoggerService.js'
+import {getAppDatabaseSource} from '../database/AppDataSource.js'
 
 export default class Info extends Command {
   static description = 'prints information about the database'

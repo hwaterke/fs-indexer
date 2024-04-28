@@ -1,13 +1,13 @@
 import {DataSource} from 'typeorm'
-import {FileEntity} from '../database/entities/FileEntity'
-import {expandPath, extractExif, walkDirOrFile} from '../utils'
+import {FileEntity} from '../database/entities/FileEntity.js'
+import {expandPath, extractExif, walkDirOrFile} from '../utils.js'
 import {access, stat, unlink, writeFile} from 'node:fs/promises'
 import {constants} from 'node:fs'
-import {DatabaseService} from './DatabaseService'
+import {DatabaseService} from './DatabaseService.js'
 import * as nodePath from 'node:path'
-import {HashingAlgorithm, HashingService} from './HashingService'
-import {DuplicateFinderService} from './DuplicateFinderService'
-import {Logger} from './LoggerService'
+import {HashingAlgorithm, HashingService} from './HashingService.js'
+import {DuplicateFinderService} from './DuplicateFinderService.js'
+import {Logger} from './LoggerService.js'
 
 type CrawlingOptions = {
   limit?: number
@@ -273,7 +273,10 @@ export class IndexerService {
         )
 
         if (existingHash) {
-          const hash = this.hashingService.hash(file.path, hashingAlgorithm)
+          const hash = await this.hashingService.hash(
+            file.path,
+            hashingAlgorithm
+          )
           if (hash === existingHash.value) {
             await this.databaseService.updateHashValidity(
               file.uuid,
@@ -308,7 +311,7 @@ export class IndexerService {
           !fileEntity?.hashes ||
           !fileEntity.hashes.some((he) => he.algorithm === hashingAlgorithm)
         ) {
-          const hash = this.hashingService.hash(path, hashingAlgorithm)
+          const hash = await this.hashingService.hash(path, hashingAlgorithm)
           this.metrics.hashesComputed++
           hashesComputed = true
 
@@ -339,20 +342,24 @@ export class IndexerService {
     Logger.debug(`Found ${filesWithSameSize.length} files with the same size`)
 
     const hashes: Map<HashingAlgorithm, string> = new Map()
-    const getHash = (algorithm: HashingAlgorithm) => {
+    const getHash = async (algorithm: HashingAlgorithm) => {
       if (!hashes.has(algorithm)) {
-        hashes.set(algorithm, this.hashingService.hash(path, algorithm))
+        hashes.set(algorithm, await this.hashingService.hash(path, algorithm))
       }
       return hashes.get(algorithm)
     }
 
     for (const file of filesWithSameSize) {
-      if (
-        file.hashes.length > 0 &&
-        file.hashes.every((hashEntity) => {
-          return getHash(hashEntity.algorithm) === hashEntity.value
-        })
-      ) {
+      let allHashesMatch = true
+      for (const hashEntity of file.hashes) {
+        const computedHash = await getHash(hashEntity.algorithm)
+        if (computedHash !== hashEntity.value) {
+          allHashesMatch = false
+          break
+        }
+      }
+
+      if (allHashesMatch) {
         existingEntries.push(file)
       }
     }

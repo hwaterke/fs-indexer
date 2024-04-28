@@ -5,19 +5,20 @@
   "repository": "hwaterke/fs-indexer",
   "homepage": "https://github.com/hwaterke/fs-indexer",
   "license": "MIT",
+  "type": "module",
+  "exports": "./lib/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "fs-indexer": "./bin/run"
+    "fs-indexer": "./bin/run.js"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=20.0.0"
   },
   "files": [
     "/bin",
     "/dist",
-    "/npm-shrinkwrap.json",
     "/oclif.manifest.json"
   ],
-  "main": "dist/index.js",
   "oclif": {
     "bin": "fs-indexer",
     "dirname": "fs-indexer",
@@ -28,39 +29,37 @@
   },
   "scripts": {
     "build": "shx rm -rf dist && tsc -b",
-    "lint": "eslint . --ext .ts --config .eslintrc",
+    "lint": "eslint . --ext .ts",
     "postpack": "shx rm -f oclif.manifest.json",
-    "posttest": "yarn lint",
-    "prepack": "yarn build && oclif manifest && oclif readme",
-    "test": "mocha --forbid-only \"test/**/*.test.ts\"",
+    "format": "prettier --write .",
+    "prepack": "npm run build && oclif manifest && oclif readme",
     "version": "oclif readme && git add README.md",
-    "format": "prettier --write ."
+    "typecheck": "tsc --noEmit"
   },
-  "types": "lib/index.d.ts",
   "dependencies": {
     "@oclif/core": "^3",
     "@oclif/plugin-help": "^6",
-    "luxon": "^3.4.3",
-    "reflect-metadata": "^0.1.13",
-    "shelljs": "^0.8.5",
-    "sqlite3": "^5.1.6",
-    "typeorm": "^0.3.17",
+    "luxon": "^3",
+    "reflect-metadata": "^0.2.2",
+    "sqlite3": "^5.1.7",
+    "typeorm": "^0.3.20",
     "winston": "^3"
   },
   "devDependencies": {
-    "@types/luxon": "^3.3.3",
-    "@types/node": "^18",
+    "@oclif/prettier-config": "^0.2.1",
+    "@types/luxon": "^3",
+    "@types/node": "^20",
     "@types/shelljs": "^0.8.14",
-    "eslint": "^7.32.0",
+    "eslint": "^8",
     "eslint-config-oclif": "^5",
     "eslint-config-oclif-typescript": "^3",
-    "eslint-config-prettier": "^9",
-    "globby": "^11",
+    "eslint-config-prettier": "^9.1.0",
+    "globby": "^14",
     "oclif": "^4",
     "prettier": "^3",
     "shx": "^0.3.4",
     "ts-node": "^10.9.1",
     "tslib": "^2.6.2",
-    "typescript": "^5.2.2"
+    "typescript": "^5"
   }
 }

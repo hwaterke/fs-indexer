@@ -1,11 +1,11 @@
-import {FileEntity} from './entities/FileEntity'
+import {FileEntity} from './entities/FileEntity.js'
 import {DataSource} from 'typeorm'
-import {HashEntity} from './entities/HashEntity'
-import {InitialMigration1651605236637} from './migrations/1651605236637-InitialMigration'
-import {ExifMigration1652798832847} from './migrations/1652798832847-ExifMigration'
-import {ExifDateMigration1654705239151} from './migrations/1654705239151-ExifDateMigration'
-import {LivePhotoMigration1691586419841} from './migrations/1691586419841-LivePhotoMigration'
-import {GpsMigration1697658019379} from './migrations/1697658019379-GpsMigration'
+import {HashEntity} from './entities/HashEntity.js'
+import {InitialMigration1651605236637} from './migrations/1651605236637-InitialMigration.js'
+import {ExifMigration1652798832847} from './migrations/1652798832847-ExifMigration.js'
+import {ExifDateMigration1654705239151} from './migrations/1654705239151-ExifDateMigration.js'
+import {LivePhotoMigration1691586419841} from './migrations/1691586419841-LivePhotoMigration.js'
+import {GpsMigration1697658019379} from './migrations/1697658019379-GpsMigration.js'
 
 let AppDataSource: DataSource | null = null
 

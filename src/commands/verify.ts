@@ -1,10 +1,10 @@
 import 'reflect-metadata'
 import {Args, Command, Flags} from '@oclif/core'
-import {IndexerService} from '../services/IndexerService'
-import {HashingAlgorithm} from '../services/HashingService'
-import {getHashingAlgorithms, humanReadableSeconds} from '../utils'
-import {Logger} from '../services/LoggerService'
-import {getAppDatabaseSource} from '../database/AppDataSource'
+import {IndexerService} from '../services/IndexerService.js'
+import {HashingAlgorithm} from '../services/HashingService.js'
+import {getHashingAlgorithms, humanReadableSeconds} from '../utils.js'
+import {Logger} from '../services/LoggerService.js'
+import {getAppDatabaseSource} from '../database/AppDataSource.js'
 
 export default class Verify extends Command {
   static description =

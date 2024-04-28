@@ -1,8 +1,8 @@
 import {DataSource, Like} from 'typeorm'
-import {FileEntity} from '../database/entities/FileEntity'
-import {HashEntity} from '../database/entities/HashEntity'
-import {HashingAlgorithm} from './HashingService'
-import {ExifMetadata} from '../utils'
+import {FileEntity} from '../database/entities/FileEntity.js'
+import {HashEntity} from '../database/entities/HashEntity.js'
+import {HashingAlgorithm} from './HashingService.js'
+import {ExifMetadata} from '../utils.js'
 
 export class DatabaseService {
   constructor(private datasource: DataSource) {}

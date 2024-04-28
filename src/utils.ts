@@ -2,13 +2,16 @@ import {opendir, stat, access, lstat} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import * as nodePath from 'node:path'
 import {homedir} from 'node:os'
-import {HashingAlgorithm} from './services/HashingService'
-import {exec} from 'shelljs'
-import {Logger} from './services/LoggerService'
+import {HashingAlgorithm} from './services/HashingService.js'
+import {Logger} from './services/LoggerService.js'
 import {DateTime} from 'luxon'
-import {EXIF_TAGS, ExiftoolMetadata} from './types/exif'
-import {ExiftoolService} from './services/ExiftoolService'
-import {FfmpegService} from './services/FfmpegService'
+import {EXIF_TAGS, ExiftoolMetadata} from './types/exif.js'
+import {ExiftoolService} from './services/ExiftoolService.js'
+import {FfmpegService} from './services/FfmpegService.js'
+import {promisify} from 'node:util'
+import {exec as callbackExec} from 'node:child_process'
+
+const exec = promisify(callbackExec)
 
 type WalkCallback = (path: string) => Promise<{stop: boolean}>
 
@@ -106,8 +109,8 @@ export const extractExifMetadata = async (
   path: string
 ): Promise<ExiftoolMetadata> => {
   await ensureFile(path)
-  const result = exec(`exiftool -G0:1 -json "${path}"`, {silent: true})
-  return JSON.parse(result)[0]
+  const result = await exec(`exiftool -G0:1 -json "${path}"`)
+  return JSON.parse(result.stdout)[0]
 }
 
 const EXIF_IMAGE_MAKE = 'EXIF:IFD0:Make'

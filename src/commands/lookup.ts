@@ -1,9 +1,9 @@
 import 'reflect-metadata'
 import {Args, Command, Flags} from '@oclif/core'
-import {IndexerService} from '../services/IndexerService'
-import {humanReadableSeconds} from '../utils'
-import {Logger} from '../services/LoggerService'
-import {getAppDatabaseSource} from '../database/AppDataSource'
+import {IndexerService} from '../services/IndexerService.js'
+import {humanReadableSeconds} from '../utils.js'
+import {Logger} from '../services/LoggerService.js'
+import {getAppDatabaseSource} from '../database/AppDataSource.js'
 
 export default class Lookup extends Command {
   static description = 'searches for files within the database'
