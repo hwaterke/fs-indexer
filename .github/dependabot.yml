@@ -9,10 +9,5 @@ updates:
     ignore:
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
-      - dependency-name: 'chalk'
-        update-types: ['version-update:semver-major']
       - dependency-name: 'eslint'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'fs-extra'
-      - dependency-name: 'globby'
         update-types: ['version-update:semver-major']

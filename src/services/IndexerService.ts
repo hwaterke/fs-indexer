@@ -1,13 +1,12 @@
-import {DataSource} from 'typeorm'
-import {FileEntity} from '../database/entities/FileEntity.js'
 import {expandPath, extractExif, walkDirOrFile} from '../utils.js'
-import {access, stat, unlink, writeFile} from 'node:fs/promises'
+import {access, stat, unlink} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import {DatabaseService} from './DatabaseService.js'
 import * as nodePath from 'node:path'
 import {HashingAlgorithm, HashingService} from './HashingService.js'
 import {DuplicateFinderService} from './DuplicateFinderService.js'
 import {Logger} from './LoggerService.js'
+import {IndexedFile, IndexedFileWithHashes} from '../drizzle/schema.js'
 
 type CrawlingOptions = {
   limit?: number
@@ -33,9 +32,9 @@ type LookupOptions = {
 }
 
 export class IndexerService {
-  private databaseService
-  private hashingService = new HashingService()
-  private duplicateFinder = new DuplicateFinderService()
+  private readonly databaseService
+  private readonly hashingService = new HashingService()
+  private readonly duplicateFinder = new DuplicateFinderService()
 
   private metrics = {
     filesCrawled: 0,
@@ -45,8 +44,8 @@ export class IndexerService {
     startTimeMillis: Date.now(),
   }
 
-  constructor(datasource: DataSource) {
-    this.databaseService = new DatabaseService(datasource)
+  constructor(databasePath: string) {
+    this.databaseService = new DatabaseService(databasePath)
   }
 
   async info(options: InfoOptions): Promise<void> {
@@ -67,18 +66,18 @@ export class IndexerService {
     }
 
     if (options.duplicates) {
+      // TODO Rework the duplicate finder.
       const candidates = await this.databaseService.duplicates()
       Logger.debug(`${candidates.length} duplicate candidates`)
-
-      const duplicates = this.duplicateFinder.getDuplicateGroups(candidates)
-
-      // Write duplicates to file
-      const data = JSON.stringify(
-        duplicates.map((group) => group.map((f) => f.path))
-      )
-      await writeFile('./duplicates.json', data, 'utf8')
-
-      duplicates.map((group) => this.duplicateFinder.debugGroup(group))
+      // const duplicates = this.duplicateFinder.getDuplicateGroups(candidates)
+      //
+      // // Write duplicates to file
+      // const data = JSON.stringify(
+      //   duplicates.map((group) => group.map((f) => f.path))
+      // )
+      // await writeFile('./duplicates.json', data, 'utf8')
+      //
+      // duplicates.map((group) => this.duplicateFinder.debugGroup(group))
     }
   }
 
@@ -159,9 +158,12 @@ export class IndexerService {
       this.metrics.filesCrawled++
 
       if (existingEntry) {
-        await this.hashFile(filePath, options.hashingAlgorithms, existingEntry)
+        await this.hashFile({
+          indexedFile: existingEntry,
+          hashingAlgorithms: options.hashingAlgorithms,
+        })
         if (options.includeExif) {
-          await this.addMissingExifMetadata({fileEntity: existingEntry})
+          await this.addMissingExifMetadata({indexedFile: existingEntry})
         }
       } else {
         Logger.debug(`Indexing ${filePath}`)
@@ -171,10 +173,17 @@ export class IndexerService {
           includeExif: options.includeExif,
         })
 
-        const fileEntity = await this.databaseService.createFile(metadata)
+        const [fileEntity] = await this.databaseService.createFile(metadata)
         this.metrics.newFilesIndexed++
 
-        await this.hashFile(filePath, options.hashingAlgorithms, fileEntity)
+        await this.hashFile({
+          hashingAlgorithms: options.hashingAlgorithms,
+          indexedFile: {
+            id: fileEntity.id,
+            path: fileEntity.path,
+            hashes: [],
+          },
+        })
       }
 
       const shouldStopForLimit =
@@ -230,7 +239,10 @@ export class IndexerService {
     }
   }
 
-  async verifyFile(file: FileEntity, options: VerifyOptions): Promise<void> {
+  async verifyFile(
+    file: IndexedFileWithHashes,
+    options: VerifyOptions
+  ): Promise<void> {
     Logger.debug(`${this.metrics.filesCrawled} Verifying ${file.path}`)
 
     try {
@@ -239,7 +251,9 @@ export class IndexerService {
       Logger.info(`File ${file.path} does not exist anymore`)
 
       if (options.purge) {
-        await this.databaseService.deleteFile(file)
+        await this.databaseService.deleteFile({
+          indexedFileId: file.id,
+        })
       }
       return
     }
@@ -258,7 +272,9 @@ export class IndexerService {
         metadata.mtime === file.mtime &&
         metadata.ctime === file.ctime
       ) {
-        await this.databaseService.updateFileValidity(file.uuid)
+        await this.databaseService.updateFileValidity({
+          indexedFileId: file.id,
+        })
       } else {
         Logger.info(
           `Inconsistent metadata for ${file.path}. ${JSON.stringify(
@@ -279,7 +295,7 @@ export class IndexerService {
           )
           if (hash === existingHash.value) {
             await this.databaseService.updateHashValidity(
-              file.uuid,
+              file.id,
               existingHash.algorithm
             )
           } else {
@@ -298,25 +314,33 @@ export class IndexerService {
     }
   }
 
-  private async hashFile(
-    path: string,
-    hashingAlgorithms: HashingAlgorithm[],
-    fileEntity: FileEntity
-  ): Promise<void> {
+  private async hashFile({
+    indexedFile,
+    hashingAlgorithms,
+  }: {
+    hashingAlgorithms: HashingAlgorithm[]
+    indexedFile: {
+      id: string
+      path: string
+      hashes: {algorithm: HashingAlgorithm}[]
+    }
+  }): Promise<void> {
     let hashesComputed = false
 
     if (hashingAlgorithms.length > 0) {
       for await (const hashingAlgorithm of hashingAlgorithms) {
         if (
-          !fileEntity?.hashes ||
-          !fileEntity.hashes.some((he) => he.algorithm === hashingAlgorithm)
+          !indexedFile.hashes.some((he) => he.algorithm === hashingAlgorithm)
         ) {
-          const hash = await this.hashingService.hash(path, hashingAlgorithm)
+          const hash = await this.hashingService.hash(
+            indexedFile.path,
+            hashingAlgorithm
+          )
           this.metrics.hashesComputed++
           hashesComputed = true
 
           await this.databaseService.createHash({
-            fileUuid: fileEntity!.uuid,
+            indexedFileId: indexedFile.id,
             algorithm: hashingAlgorithm,
             hash,
           })
@@ -329,14 +353,14 @@ export class IndexerService {
     }
   }
 
-  private async lookupExistingEntries(path: string): Promise<FileEntity[]> {
+  private async lookupExistingEntries(path: string): Promise<IndexedFile[]> {
     Logger.debug(`Looking up for entries similar to ${path}`)
     const {size} = await this.getFileMetadata({
       filePath: path,
       includeExif: false,
     })
 
-    const existingEntries: FileEntity[] = []
+    const existingEntries: IndexedFile[] = []
 
     const filesWithSameSize = await this.databaseService.findFilesBySize(size)
     Logger.debug(`Found ${filesWithSameSize.length} files with the same size`)
@@ -379,8 +403,8 @@ export class IndexerService {
     return {
       path: filePath,
       size: stats.size,
-      ctime: Math.floor(stats.ctimeMs),
-      mtime: Math.floor(stats.mtimeMs),
+      ctime: stats.ctime,
+      mtime: stats.mtime,
       basename: nodePath.basename(filePath),
       extension: nodePath.extname(filePath),
       validatedAt: new Date(),
@@ -389,14 +413,18 @@ export class IndexerService {
   }
 
   private async addMissingExifMetadata({
-    fileEntity,
+    indexedFile,
   }: {
-    fileEntity: FileEntity
+    indexedFile: {
+      id: string
+      path: string
+      width: number | null
+    }
   }): Promise<void> {
-    if (fileEntity.width === undefined || fileEntity.width === null) {
+    if (indexedFile.width === undefined || indexedFile.width === null) {
       await this.databaseService.updateFileExifMetadata({
-        fileUuid: fileEntity.uuid,
-        exifMetadata: await extractExif(fileEntity.path),
+        indexedFileId: indexedFile.id,
+        exifMetadata: await extractExif(indexedFile.path),
       })
     }
   }

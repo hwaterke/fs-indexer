@@ -1,9 +1,7 @@
-import 'reflect-metadata'
 import {Command, Flags} from '@oclif/core'
 import {IndexerService} from '../services/IndexerService.js'
 import {humanReadableSeconds} from '../utils.js'
 import {Logger} from '../services/LoggerService.js'
-import {getAppDatabaseSource} from '../database/AppDataSource.js'
 
 export default class Info extends Command {
   static description = 'prints information about the database'
@@ -27,18 +25,10 @@ export default class Info extends Command {
       Logger.setLevel('debug')
     }
 
-    const dataSource = getAppDatabaseSource(flags.database)
-    await dataSource.initialize()
-    try {
-      const indexer = new IndexerService(dataSource)
-      await indexer.info({duplicates: flags.duplicates})
-      console.log(
-        `Operation performed in ${humanReadableSeconds(
-          indexer.elapsedSeconds()
-        )}`
-      )
-    } finally {
-      await dataSource.destroy()
-    }
+    const indexer = new IndexerService(flags.database)
+    await indexer.info({duplicates: flags.duplicates})
+    console.log(
+      `Operation performed in ${humanReadableSeconds(indexer.elapsedSeconds())}`
+    )
   }
 }

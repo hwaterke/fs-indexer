@@ -1,57 +1,91 @@
-import {DataSource, Like} from 'typeorm'
-import {FileEntity} from '../database/entities/FileEntity.js'
-import {HashEntity} from '../database/entities/HashEntity.js'
 import {HashingAlgorithm} from './HashingService.js'
 import {ExifMetadata} from '../utils.js'
+import {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3/driver'
+import * as schema from '../drizzle/schema.js'
+import {
+  IndexedFile,
+  IndexedFileWithHashes,
+  InsertIndexedFile,
+  hashTable,
+  indexedFileTable,
+} from '../drizzle/schema.js'
+import Database from 'better-sqlite3'
+import {drizzle} from 'drizzle-orm/better-sqlite3'
+import {migrate} from 'drizzle-orm/better-sqlite3/migrator'
+import {dirname, resolve} from 'node:path'
+import {fileURLToPath} from 'node:url'
+import {and, asc, count, eq, gt, like, sum} from 'drizzle-orm'
 
 export class DatabaseService {
-  constructor(private datasource: DataSource) {}
+  private readonly db: BetterSQLite3Database<typeof schema>
 
-  async createFile(
-    file: Omit<FileEntity, 'uuid' | 'hashes' | 'createdAt' | 'updatedAt'>
-  ): Promise<FileEntity> {
-    const repository = this.datasource.getRepository(FileEntity)
-    return repository.save(file)
-  }
+  constructor(databasePath: string, logQueries = false) {
+    const sqlite = new Database(databasePath)
+    this.db = drizzle(sqlite, {schema, logger: logQueries})
 
-  async updateFileExifMetadata({
-    fileUuid,
-    exifMetadata,
-  }: {
-    fileUuid: string
-    exifMetadata: ExifMetadata
-  }): Promise<void> {
-    const repository = this.datasource.getRepository(FileEntity)
-    await repository.update(fileUuid, exifMetadata)
-  }
-
-  async deleteFile(file: FileEntity): Promise<void> {
-    const repository = this.datasource.getRepository(FileEntity)
-    await repository.remove(file)
-  }
-
-  async updateFileValidity(fileUuid: string): Promise<void> {
-    const repository = this.datasource.getRepository(FileEntity)
-    await repository.update(fileUuid, {
-      validatedAt: new Date(),
+    migrate(this.db, {
+      migrationsFolder: resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        '../drizzle/migrations'
+      ),
     })
   }
 
+  async createFile(file: InsertIndexedFile) {
+    return this.db.insert(indexedFileTable).values(file).returning({
+      id: indexedFileTable.id,
+      path: indexedFileTable.path,
+    })
+  }
+
+  async updateFileExifMetadata({
+    indexedFileId,
+    exifMetadata,
+  }: {
+    indexedFileId: string
+    exifMetadata: ExifMetadata
+  }): Promise<void> {
+    await this.db
+      .update(indexedFileTable)
+      .set({
+        ...exifMetadata,
+        updatedAt: new Date(),
+      })
+      .where(eq(indexedFileTable.id, indexedFileId))
+  }
+
+  async deleteFile({indexedFileId}: {indexedFileId: string}): Promise<void> {
+    await this.db
+      .delete(indexedFileTable)
+      .where(eq(indexedFileTable.id, indexedFileId))
+  }
+
+  async updateFileValidity({
+    indexedFileId,
+  }: {
+    indexedFileId: string
+  }): Promise<void> {
+    await this.db
+      .update(indexedFileTable)
+      .set({validatedAt: new Date(), updatedAt: new Date()})
+      .where(eq(indexedFileTable.id, indexedFileId))
+  }
+
   async createHash({
-    fileUuid,
+    indexedFileId,
     algorithm,
     hash,
   }: {
-    fileUuid: string
+    indexedFileId: string
     algorithm: HashingAlgorithm
     hash: string
-  }): Promise<HashEntity> {
-    const repository = this.datasource.getRepository(HashEntity)
-    return repository.save({
-      fileUuid,
+  }): Promise<void> {
+    await this.db.insert(schema.hashTable).values({
+      fileId: indexedFileId,
       algorithm,
       value: hash,
       validatedAt: new Date(),
+      updatedAt: new Date(),
     })
   }
 
@@ -59,65 +93,46 @@ export class DatabaseService {
     fileUuid: string,
     algorithm: HashingAlgorithm
   ): Promise<void> {
-    const repository = this.datasource.getRepository(HashEntity)
-    await repository.update(
-      {
-        fileUuid,
-        algorithm: algorithm,
+    await this.db
+      .update(schema.hashTable)
+      .set({validatedAt: new Date(), updatedAt: new Date()})
+      .where(
+        and(
+          eq(schema.hashTable.fileId, fileUuid),
+          eq(schema.hashTable.algorithm, algorithm)
+        )
+      )
+  }
+
+  async findFile(path: string) {
+    const result = await this.db.query.indexedFileTable.findFirst({
+      where: eq(indexedFileTable.path, path),
+      with: {
+        hashes: true,
       },
-      {
-        validatedAt: new Date(),
-      }
-    )
+    })
+    return result ?? null
   }
 
-  async findFile(path: string): Promise<FileEntity | null> {
-    const repository = this.datasource.getRepository(FileEntity)
-
-    return await repository
-      .createQueryBuilder('file')
-      .leftJoinAndSelect('file.hashes', 'hash')
-      .where('file.path = :path', {path})
-      .getOne()
+  async findFilesBySize(size: number) {
+    return this.db.query.indexedFileTable.findMany({
+      where: eq(indexedFileTable.size, size),
+      with: {
+        hashes: true,
+      },
+    })
   }
 
-  async findFilesBySize(size: number): Promise<FileEntity[]> {
-    const repository = this.datasource.getRepository(FileEntity)
-
-    return await repository
-      .createQueryBuilder('file')
-      .leftJoinAndSelect('file.hashes', 'hash')
-      .where('file.size = :size', {size})
-      .getMany()
+  async findFilesByExifDate(exifDate: string): Promise<IndexedFile[]> {
+    return this.db.query.indexedFileTable.findMany({
+      where: eq(indexedFileTable.exifDate, exifDate),
+    })
   }
 
-  async findFilesByExifDate(exifDate: string): Promise<FileEntity[]> {
-    const repository = this.datasource.getRepository(FileEntity)
-
-    return await repository
-      .createQueryBuilder('file')
-      .leftJoinAndSelect('file.hashes', 'hash')
-      .where('file.exifDate = :exifDate', {exifDate})
-      .getMany()
-  }
-
-  async findFilesByPrefix(prefix: string): Promise<FileEntity[]> {
-    const repository = this.datasource.getRepository(FileEntity)
-
-    return await repository
-      .createQueryBuilder('file')
-      .leftJoinAndSelect('file.hashes', 'hash')
-      .where('file.basename LIKE :prefix', {prefix: `${prefix}%`})
-      .getMany()
-  }
-
-  async findAll(): Promise<FileEntity[]> {
-    const repository = this.datasource.getRepository(FileEntity)
-
-    return await repository
-      .createQueryBuilder('file')
-      .leftJoinAndSelect('file.hashes', 'hash')
-      .getMany()
+  async findFilesByPrefix(prefix: string): Promise<IndexedFile[]> {
+    return this.db.query.indexedFileTable.findMany({
+      where: like(indexedFileTable.basename, `${prefix}%`),
+    })
   }
 
   async findByValidityInPath({
@@ -126,68 +141,93 @@ export class DatabaseService {
   }: {
     count: number
     path: string
-  }): Promise<FileEntity[]> {
-    const repository = this.datasource.getRepository(FileEntity)
-
-    return await repository
-      .createQueryBuilder('file')
-      .leftJoinAndSelect('file.hashes', 'hash')
-      .where('file.path like :path', {path: `${path}%`})
-      .take(count)
-      .orderBy('file.validatedAt')
-      .getMany()
-  }
-
-  async totalSize(): Promise<number> {
-    const rawResult = await this.datasource
-      .getRepository(FileEntity)
-      .createQueryBuilder('file')
-      .select('SUM(file.size)', 'total_size')
-      .getRawOne<{total_size: number}>()
-
-    return rawResult!.total_size
-  }
-
-  async countFiles(): Promise<number> {
-    const repository = this.datasource.getRepository(FileEntity)
-    return await repository.count()
-  }
-
-  async countFilesInPath({path}: {path: string}): Promise<number> {
-    const repository = this.datasource.getRepository(FileEntity)
-    return await repository.count({
-      where: {
-        path: Like(`${path}%`),
+  }): Promise<IndexedFileWithHashes[]> {
+    return this.db.query.indexedFileTable.findMany({
+      where: like(indexedFileTable.path, `${path}%`),
+      limit: count,
+      orderBy: asc(indexedFileTable.validatedAt),
+      with: {
+        hashes: true,
       },
     })
   }
 
-  async countHashes(algorithm?: HashingAlgorithm): Promise<number> {
-    const repository = this.datasource.getRepository(HashEntity)
-    return await repository.count(algorithm ? {where: {algorithm}} : undefined)
+  async totalSize(): Promise<number> {
+    const results = await this.db
+      .select({totalSize: sum(indexedFileTable.size).mapWith(Number)})
+      .from(indexedFileTable)
+
+    if (results.length === 0) {
+      return 0
+    }
+    return results[0].totalSize
   }
 
-  async duplicates(): Promise<FileEntity[]> {
-    const repository = this.datasource.getRepository(FileEntity)
+  async countFiles(): Promise<number> {
+    const results = await this.db
+      .select({count: count(indexedFileTable.id)})
+      .from(indexedFileTable)
 
-    const files = await repository
-      .createQueryBuilder('file')
-      .innerJoinAndSelect('file.hashes', 'hash')
+    if (results.length === 0) {
+      return 0
+    }
+    return results[0].count
+  }
+
+  async countFilesInPath({path}: {path: string}): Promise<number> {
+    const results = await this.db
+      .select({count: count(indexedFileTable.id)})
+      .from(indexedFileTable)
+      .where(like(indexedFileTable.path, `${path}%`))
+
+    if (results.length === 0) {
+      return 0
+    }
+    return results[0].count
+  }
+
+  async countHashes(algorithm?: HashingAlgorithm): Promise<number> {
+    const results = await this.db
+      .select({count: count()})
+      .from(schema.hashTable)
+      .where(algorithm ? eq(schema.hashTable.algorithm, algorithm) : undefined)
+
+    if (results.length === 0) {
+      return 0
+    }
+    return results[0].count
+  }
+
+  async duplicates() {
+    const duplicateHashQuery = this.db
+      .select({
+        algorithm: hashTable.algorithm,
+        value: hashTable.value,
+        count: count().mapWith(Number).as('hash_count'),
+      })
+      .from(schema.hashTable)
+      .groupBy(hashTable.algorithm, hashTable.value)
+      .having(({count}) => gt(count, 1))
+      .as('duplicateHashQuery')
+
+    const result = await this.db
+      .select({
+        id: indexedFileTable.id,
+        path: indexedFileTable.path,
+        size: indexedFileTable.size,
+        value: hashTable.value,
+        algorithm: hashTable.algorithm,
+      })
+      .from(indexedFileTable)
+      .innerJoin(hashTable, eq(indexedFileTable.id, hashTable.fileId))
       .innerJoin(
-        (qb) =>
-          qb
-            .select('hd.algorithm', 'd_algo')
-            .addSelect('hd.value', 'd_value')
-            .addSelect('COUNT(*)')
-            .from(HashEntity, 'hd')
-            .groupBy('hd.algorithm')
-            .addGroupBy('hd.value')
-            .having('COUNT(*) > 1'),
-        'dup',
-        'hash.value = dup.d_value AND hash.algorithm = dup.d_algo'
+        duplicateHashQuery,
+        and(
+          eq(hashTable.algorithm, duplicateHashQuery.algorithm),
+          eq(hashTable.value, duplicateHashQuery.value)
+        )
       )
-      .getMany()
 
-    return files
+    return result
   }
 }

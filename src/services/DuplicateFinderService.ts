@@ -1,13 +1,19 @@
-import {FileEntity} from '../database/entities/FileEntity.js'
 import {HashingAlgorithm} from './HashingService.js'
 import {Logger} from './LoggerService.js'
+import {IndexedFileWithHashes} from '../drizzle/schema.js'
 
 export class DuplicateFinderService {
   /**
    * Finds duplicates in a group of files.
    * Returns a list of duplicate groups
    */
-  getDuplicateGroups(files: FileEntity[]): FileEntity[][] {
+  getDuplicateGroups<
+    T extends {
+      path: string
+      size: number
+      hashes: {algorithm: HashingAlgorithm; value: string}[]
+    },
+  >(files: T[]): T[][] {
     const sizeGroups = this.groupBySize(files).filter(
       (group) => group.length > 1
     )
@@ -28,8 +34,8 @@ export class DuplicateFinderService {
     return sortedByPath
   }
 
-  private groupBySize(files: FileEntity[]): FileEntity[][] {
-    const bySize: Record<number, FileEntity[]> = {}
+  private groupBySize<T extends {size: number}>(files: T[]): T[][] {
+    const bySize: Record<number, T[]> = {}
     for (const file of files) {
       if (!bySize[file.size]) {
         bySize[file.size] = []
@@ -39,8 +45,12 @@ export class DuplicateFinderService {
     return Object.values(bySize)
   }
 
-  private groupByHashes(files: FileEntity[]) {
-    const hashGroups: FileEntity[][] = []
+  private groupByHashes<
+    T extends {
+      hashes: {algorithm: HashingAlgorithm; value: string}[]
+    },
+  >(files: T[]) {
+    const hashGroups: T[][] = []
     for (const file of files) {
       let added = false
       // Try to place it in a group with similar hashes
@@ -67,15 +77,20 @@ export class DuplicateFinderService {
     return hashGroups
   }
 
-  private getHash(file: FileEntity, algorithm: HashingAlgorithm) {
+  private getHash(
+    file: {
+      hashes: {algorithm: HashingAlgorithm; value: string}[]
+    },
+    algorithm: HashingAlgorithm
+  ) {
     return file.hashes.find((hash) => hash.algorithm === algorithm)
   }
 
-  debugGroup(files: FileEntity[]): void {
+  debugGroup(files: IndexedFileWithHashes[]): void {
     console.table(files.map((f) => this.debug(f)))
   }
 
-  debug(file: FileEntity): Record<string, string | number> {
+  debug(file: IndexedFileWithHashes): Record<string, string | number> {
     return {
       path: file.path,
       size: file.size,

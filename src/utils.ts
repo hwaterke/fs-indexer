@@ -4,7 +4,6 @@ import * as nodePath from 'node:path'
 import {homedir} from 'node:os'
 import {HashingAlgorithm} from './services/HashingService.js'
 import {Logger} from './services/LoggerService.js'
-import {DateTime} from 'luxon'
 import {FfmpegService} from './services/FfmpegService.js'
 import {EXIF_TAGS, ExiftoolService} from '@hwaterke/media-probe'
 
@@ -44,9 +43,7 @@ export const walkDir = async (
   await recursiveWalk(path)
 }
 
-export const uniq = <T>(array: T[]): T[] => {
-  return [...new Set(array)]
-}
+export const uniq = <T>(array: T[]): T[] => [...new Set(array)]
 
 export const getHashingAlgorithms = (
   input: string[] | undefined
@@ -126,7 +123,7 @@ export type ExifMetadata = {
   model?: string
   width?: number
   height?: number
-  exifDate?: string
+  exifDate?: string | null
   livePhotoSource?: string
   livePhotoTarget?: string
   latitude?: number
@@ -203,9 +200,7 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
     height: toNumber(
       EXIF_HEIGHT_KEYS.map((k) => exif[k]).find((key) => key !== undefined)
     ),
-    exifDate: date
-      ? DateTime.fromISO(date).toFormat('yyyy-MM-dd_HH-mm-ss')
-      : undefined,
+    exifDate: date,
     livePhotoSource: exif[EXIF_TAGS.LIVE_PHOTO_UUID_PHOTO],
     livePhotoTarget: exif[EXIF_TAGS.LIVE_PHOTO_UUID_VIDEO],
     latitude: gps?.latitude,

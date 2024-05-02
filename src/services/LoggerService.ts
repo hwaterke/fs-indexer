@@ -12,15 +12,15 @@ const logger = winston.createLogger({
 })
 
 export const Logger = {
-  debug: (message: string): void => {
+  debug(message: string): void {
     logger.debug(message)
   },
 
-  info: (message: string): void => {
+  info(message: string): void {
     logger.info(message)
   },
 
-  setLevel: (level: 'debug' | 'info'): void => {
+  setLevel(level: 'debug' | 'info'): void {
     logger.level = level
   },
 }

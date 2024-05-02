@@ -1,10 +1,8 @@
-import 'reflect-metadata'
 import {Args, Command, Flags} from '@oclif/core'
 import {IndexerService} from '../services/IndexerService.js'
 import {HashingAlgorithm} from '../services/HashingService.js'
 import {getHashingAlgorithms, humanReadableSeconds} from '../utils.js'
 import {Logger} from '../services/LoggerService.js'
-import {getAppDatabaseSource} from '../database/AppDataSource.js'
 
 export default class Crawl extends Command {
   static description = 'index the folder provided'
@@ -49,23 +47,15 @@ export default class Crawl extends Command {
       Logger.setLevel('debug')
     }
 
-    const dataSource = getAppDatabaseSource(flags.database)
-    await dataSource.initialize()
-    try {
-      const indexer = new IndexerService(dataSource)
-      await indexer.crawl(args.path, {
-        limit: flags.limit,
-        minutes: flags.minutes,
-        hashingAlgorithms: getHashingAlgorithms(flags.hashingAlgorithms),
-        includeExif: flags.exif,
-      })
-      console.log(
-        `Operation performed in ${humanReadableSeconds(
-          indexer.elapsedSeconds()
-        )}`
-      )
-    } finally {
-      await dataSource.destroy()
-    }
+    const indexer = new IndexerService(flags.database)
+    await indexer.crawl(args.path, {
+      limit: flags.limit,
+      minutes: flags.minutes,
+      hashingAlgorithms: getHashingAlgorithms(flags.hashingAlgorithms),
+      includeExif: flags.exif,
+    })
+    console.log(
+      `Operation performed in ${humanReadableSeconds(indexer.elapsedSeconds())}`
+    )
   }
 }
