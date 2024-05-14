@@ -1,4 +1,4 @@
-import {expandPath, extractExif, walkDirOrFile} from '../utils.js'
+import {expandPath, extractExif} from '../utils.js'
 import {access, stat, unlink} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import {DatabaseService} from './DatabaseService.js'
@@ -7,12 +7,14 @@ import {HashingAlgorithm, HashingService} from './HashingService.js'
 import {DuplicateFinderService} from './DuplicateFinderService.js'
 import {Logger} from './LoggerService.js'
 import {IndexedFile, IndexedFileWithHashes} from '../drizzle/schema.js'
+import {walkDirOrFile} from '../walkDirOrFile.js'
 
 type CrawlingOptions = {
   limit?: number
   minutes?: number
   hashingAlgorithms: HashingAlgorithm[]
   includeExif: boolean
+  ignoreFileName?: string
 }
 
 type VerifyOptions = {
@@ -85,65 +87,70 @@ export class IndexerService {
     path = expandPath(path)
     Logger.debug(`Lookup ${path}`)
 
-    await walkDirOrFile(path, async (filePath) => {
-      Logger.debug(`Looking up ${filePath}`)
-      const metadata = await this.getFileMetadata({
-        filePath,
-        includeExif: options.includeExif,
-      })
+    await walkDirOrFile({
+      path,
+      options: {
+        ignoreFileName: null,
+      },
+      callback: async (filePath) => {
+        Logger.debug(`Looking up ${filePath}`)
+        const metadata = await this.getFileMetadata({
+          filePath,
+          includeExif: options.includeExif,
+        })
 
-      const similarFiles = await this.lookupExistingEntries(filePath)
+        const similarFiles = await this.lookupExistingEntries(filePath)
 
-      if (similarFiles.length > 0) {
-        if (similarFiles.some((f) => f.path === filePath)) {
-          Logger.info(`🆗 ${filePath}`)
+        if (similarFiles.length > 0) {
+          if (similarFiles.some((f) => f.path === filePath)) {
+            Logger.info(`🆗 ${filePath}`)
+          } else {
+            Logger.info(`✅ ${filePath}`)
+            if (options.remove) {
+              Logger.info(
+                `Deleting ${filePath} as similar files were found in the index`
+              )
+              await unlink(filePath)
+            }
+          }
+
+          for (const file of similarFiles) {
+            Logger.debug(`  ${file.path}`)
+          }
         } else {
-          Logger.info(`✅ ${filePath}`)
-          if (options.remove) {
-            Logger.info(
-              `Deleting ${filePath} as similar files were found in the index`
-            )
-            await unlink(filePath)
+          Logger.info(`❌ ${filePath}`)
+        }
+
+        // Find similar exif date
+        if (metadata.exifDate) {
+          const similarExifDate =
+            await this.databaseService.findFilesByExifDate(metadata.exifDate)
+          if (similarExifDate.length > 0) {
+            Logger.info(`Files with similar exif date`)
+            for (const file of similarExifDate) {
+              Logger.debug(`  ${file.path}`)
+            }
           }
         }
 
-        for (const file of similarFiles) {
-          Logger.debug(`  ${file.path}`)
-        }
-      } else {
-        Logger.info(`❌ ${filePath}`)
-      }
-
-      // Find similar exif date
-      if (metadata.exifDate) {
-        const similarExifDate = await this.databaseService.findFilesByExifDate(
-          metadata.exifDate
-        )
-        if (similarExifDate.length > 0) {
-          Logger.info(`Files with similar exif date`)
-          for (const file of similarExifDate) {
-            Logger.debug(`  ${file.path}`)
+        // Find similar prefix
+        const prefixMatch = nodePath
+          .basename(filePath)
+          .match(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}/)
+        if (prefixMatch) {
+          const similarPrefix = await this.databaseService.findFilesByPrefix(
+            prefixMatch[0]
+          )
+          if (similarPrefix.length > 0) {
+            Logger.info(`Files with similar prefix`)
+            for (const file of similarPrefix) {
+              Logger.debug(`  ${file.path}`)
+            }
           }
         }
-      }
 
-      // Find similar prefix
-      const prefixMatch = nodePath
-        .basename(filePath)
-        .match(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}/)
-      if (prefixMatch) {
-        const similarPrefix = await this.databaseService.findFilesByPrefix(
-          prefixMatch[0]
-        )
-        if (similarPrefix.length > 0) {
-          Logger.info(`Files with similar prefix`)
-          for (const file of similarPrefix) {
-            Logger.debug(`  ${file.path}`)
-          }
-        }
-      }
-
-      return {stop: false}
+        return {stop: false}
+      },
     })
   }
 
@@ -151,52 +158,59 @@ export class IndexerService {
     path = expandPath(path)
     Logger.debug(`Indexing ${path}`)
 
-    await walkDirOrFile(path, async (filePath) => {
-      // Is it already indexed?
-      const existingEntry = await this.databaseService.findFile(filePath)
+    await walkDirOrFile({
+      path,
+      options: {
+        ignoreFileName: options.ignoreFileName ?? null,
+      },
+      callback: async (filePath) => {
+        // Is it already indexed?
+        const existingEntry = await this.databaseService.findFile(filePath)
 
-      this.metrics.filesCrawled++
+        this.metrics.filesCrawled++
 
-      if (existingEntry) {
-        await this.hashFile({
-          indexedFile: existingEntry,
-          hashingAlgorithms: options.hashingAlgorithms,
-        })
-        if (options.includeExif) {
-          await this.addMissingExifMetadata({indexedFile: existingEntry})
+        if (existingEntry) {
+          await this.hashFile({
+            indexedFile: existingEntry,
+            hashingAlgorithms: options.hashingAlgorithms,
+          })
+          if (options.includeExif) {
+            await this.addMissingExifMetadata({indexedFile: existingEntry})
+          }
+        } else {
+          Logger.debug(`Indexing ${filePath}`)
+
+          const metadata = await this.getFileMetadata({
+            filePath,
+            includeExif: options.includeExif,
+          })
+
+          const [fileEntity] = await this.databaseService.createFile(metadata)
+          this.metrics.newFilesIndexed++
+
+          await this.hashFile({
+            hashingAlgorithms: options.hashingAlgorithms,
+            indexedFile: {
+              id: fileEntity.id,
+              path: fileEntity.path,
+              hashes: [],
+            },
+          })
         }
-      } else {
-        Logger.debug(`Indexing ${filePath}`)
 
-        const metadata = await this.getFileMetadata({
-          filePath,
-          includeExif: options.includeExif,
-        })
+        const shouldStopForLimit =
+          options.limit !== undefined &&
+          Math.max(this.metrics.newFilesIndexed, this.metrics.filesHashed) >=
+            options.limit
 
-        const [fileEntity] = await this.databaseService.createFile(metadata)
-        this.metrics.newFilesIndexed++
+        const shouldStopForTime =
+          options.minutes !== undefined &&
+          this.elapsedMinutes() > options.minutes
 
-        await this.hashFile({
-          hashingAlgorithms: options.hashingAlgorithms,
-          indexedFile: {
-            id: fileEntity.id,
-            path: fileEntity.path,
-            hashes: [],
-          },
-        })
-      }
-
-      const shouldStopForLimit =
-        options.limit !== undefined &&
-        Math.max(this.metrics.newFilesIndexed, this.metrics.filesHashed) >=
-          options.limit
-
-      const shouldStopForTime =
-        options.minutes !== undefined && this.elapsedMinutes() > options.minutes
-
-      return {
-        stop: shouldStopForLimit || shouldStopForTime,
-      }
+        return {
+          stop: shouldStopForLimit || shouldStopForTime,
+        }
+      },
     })
 
     Logger.info(

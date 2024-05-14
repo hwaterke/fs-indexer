@@ -31,6 +31,10 @@ export default class Crawl extends Command {
       char: 'm',
       description: 'stop after n minutes',
     }),
+    ignore: Flags.string({
+      char: 'i',
+      description: 'name of ignore file',
+    }),
     debug: Flags.boolean({
       description: 'enable debug logging',
     }),
@@ -53,6 +57,7 @@ export default class Crawl extends Command {
       minutes: flags.minutes,
       hashingAlgorithms: getHashingAlgorithms(flags.hashingAlgorithms),
       includeExif: flags.exif,
+      ignoreFileName: flags.ignore,
     })
     console.log(
       `Operation performed in ${humanReadableSeconds(indexer.elapsedSeconds())}`

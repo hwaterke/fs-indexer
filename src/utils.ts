@@ -1,4 +1,4 @@
-import {access, lstat, opendir, stat} from 'node:fs/promises'
+import {access, lstat} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import * as nodePath from 'node:path'
 import {homedir} from 'node:os'
@@ -6,42 +6,6 @@ import {HashingAlgorithm} from './services/HashingService.js'
 import {Logger} from './services/LoggerService.js'
 import {FfmpegService} from './services/FfmpegService.js'
 import {EXIF_TAGS, ExiftoolService} from '@hwaterke/media-probe'
-
-type WalkCallback = (path: string) => Promise<{stop: boolean}>
-
-export const walkDirOrFile = async (
-  path: string,
-  callback: WalkCallback
-): Promise<void> => {
-  const stats = await stat(path)
-  await (stats.isDirectory() ? walkDir(path, callback) : callback(path))
-}
-
-export const walkDir = async (
-  path: string,
-  callback: WalkCallback
-): Promise<void> => {
-  let shouldStop = false
-
-  const recursiveWalk = async (directoryPath: string) => {
-    const dir = await opendir(directoryPath)
-    for await (const dirent of dir) {
-      const filepath = nodePath.join(directoryPath, dirent.name)
-
-      if (shouldStop) {
-        return
-      }
-
-      if (dirent.isDirectory() && !dirent.isSymbolicLink()) {
-        await recursiveWalk(filepath)
-      } else if (dirent.isFile()) {
-        shouldStop = (await callback(filepath)).stop
-      }
-    }
-  }
-
-  await recursiveWalk(path)
-}
 
 export const uniq = <T>(array: T[]): T[] => [...new Set(array)]
 
