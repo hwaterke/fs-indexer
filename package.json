@@ -36,8 +36,8 @@
     "prepack": "npm run build && oclif manifest && oclif readme",
     "version": "oclif readme && git add README.md",
     "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate:sqlite --schema ./src/drizzle/schema.ts --out ./src/drizzle/migrations",
-    "db:drop": "drizzle-kit drop --driver sqlite --out ./src/drizzle/migrations"
+    "db:generate": "drizzle-kit generate",
+    "db:drop": "drizzle-kit drop"
   },
   "dependencies": {
     "@hwaterke/media-probe": "npm:@jsr/hwaterke__media-probe@^0.0.5",
@@ -55,7 +55,7 @@
     "@types/better-sqlite3": "^7.6.10",
     "@types/luxon": "^3",
     "@types/node": "^20",
-    "drizzle-kit": "^0.20.17",
+    "drizzle-kit": "^0.21.2",
     "eslint": "^8",
     "eslint-config-oclif": "^5",
     "eslint-config-oclif-typescript": "^3",
