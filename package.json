@@ -44,8 +44,8 @@
     "@oclif/core": "^3",
     "@oclif/plugin-help": "^6",
     "@paralleldrive/cuid2": "^2.2.2",
-    "better-sqlite3": "^9.6.0",
-    "drizzle-orm": "^0.30.9",
+    "better-sqlite3": "^10.0.0",
+    "drizzle-orm": "^0.30.10",
     "ignore": "^5.3.1",
     "luxon": "^3",
     "winston": "^3"
