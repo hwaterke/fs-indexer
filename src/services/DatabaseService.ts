@@ -1,4 +1,4 @@
-import {HashingAlgorithm} from './HashingService.js'
+import {HashingAlgorithmType} from './HashingService.js'
 import {ExifMetadata} from '../utils.js'
 import {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3/driver'
 import * as schema from '../drizzle/schema.js'
@@ -74,28 +74,30 @@ export class DatabaseService {
   async createHash({
     indexedFileId,
     algorithm,
+    version,
     hash,
   }: {
     indexedFileId: string
-    algorithm: HashingAlgorithm
+    algorithm: HashingAlgorithmType
+    version: string
     hash: string
   }): Promise<void> {
     await this.db.insert(schema.hashTable).values({
       fileId: indexedFileId,
       algorithm,
+      version,
       value: hash,
       validatedAt: new Date(),
-      updatedAt: new Date(),
     })
   }
 
   async updateHashValidity(
     fileUuid: string,
-    algorithm: HashingAlgorithm
+    algorithm: HashingAlgorithmType
   ): Promise<void> {
     await this.db
       .update(schema.hashTable)
-      .set({validatedAt: new Date(), updatedAt: new Date()})
+      .set({validatedAt: new Date()})
       .where(
         and(
           eq(schema.hashTable.fileId, fileUuid),
@@ -186,7 +188,7 @@ export class DatabaseService {
     return results[0].count
   }
 
-  async countHashes(algorithm?: HashingAlgorithm): Promise<number> {
+  async countHashes(algorithm?: HashingAlgorithmType): Promise<number> {
     const results = await this.db
       .select({count: count()})
       .from(schema.hashTable)

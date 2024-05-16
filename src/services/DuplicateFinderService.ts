@@ -1,4 +1,4 @@
-import {HashingAlgorithm} from './HashingService.js'
+import {HashingAlgorithmType} from './HashingService.js'
 import {Logger} from './LoggerService.js'
 import {IndexedFileWithHashes} from '../drizzle/schema.js'
 
@@ -11,7 +11,7 @@ export class DuplicateFinderService {
     T extends {
       path: string
       size: number
-      hashes: {algorithm: HashingAlgorithm; value: string}[]
+      hashes: {algorithm: HashingAlgorithmType; value: string}[]
     },
   >(files: T[]): T[][] {
     const sizeGroups = this.groupBySize(files).filter(
@@ -47,7 +47,7 @@ export class DuplicateFinderService {
 
   private groupByHashes<
     T extends {
-      hashes: {algorithm: HashingAlgorithm; value: string}[]
+      hashes: {algorithm: HashingAlgorithmType; value: string}[]
     },
   >(files: T[]) {
     const hashGroups: T[][] = []
@@ -57,7 +57,7 @@ export class DuplicateFinderService {
       for (const hashGroup of hashGroups) {
         const head = hashGroup[0]
         if (
-          Object.values(HashingAlgorithm).every(
+          Object.values(HashingAlgorithmType).every(
             (algo) =>
               this.getHash(file, algo)?.value ===
               this.getHash(head, algo)?.value
@@ -79,9 +79,9 @@ export class DuplicateFinderService {
 
   private getHash(
     file: {
-      hashes: {algorithm: HashingAlgorithm; value: string}[]
+      hashes: {algorithm: HashingAlgorithmType; value: string}[]
     },
-    algorithm: HashingAlgorithm
+    algorithm: HashingAlgorithmType
   ) {
     return file.hashes.find((hash) => hash.algorithm === algorithm)
   }

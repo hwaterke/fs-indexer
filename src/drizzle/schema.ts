@@ -7,7 +7,7 @@ import {
 } from 'drizzle-orm/sqlite-core'
 import {relations, sql} from 'drizzle-orm'
 import {createId} from '@paralleldrive/cuid2'
-import {HashingAlgorithm} from '../services/HashingService.js'
+import {HashingAlgorithmType} from '../services/HashingService.js'
 
 export const indexedFileTable = sqliteTable('file', {
   id: text('id', {
@@ -46,20 +46,18 @@ export const hashTable = sqliteTable(
     fileId: text('file_id', {length: 24})
       .notNull()
       .references(() => indexedFileTable.id, {onDelete: 'cascade'}),
-    algorithm: text('algorithm').$type<HashingAlgorithm>().notNull(),
+    algorithm: text('algorithm').$type<HashingAlgorithmType>().notNull(),
+    version: text('version').notNull(),
     value: text('value').notNull(),
     validatedAt: integer('validated_at', {mode: 'timestamp'}).notNull(),
     createdAt: integer('created_at', {mode: 'timestamp'})
-      .default(sql`(datetime('now'))`)
-      .notNull(),
-    updatedAt: integer('updated_at', {mode: 'timestamp'})
       .default(sql`(datetime('now'))`)
       .notNull(),
   },
   (table) => {
     return {
       pk: primaryKey({
-        columns: [table.algorithm, table.fileId],
+        columns: [table.algorithm, table.version, table.fileId],
         name: 'hash_algorithm_file_id_pk',
       }),
     }

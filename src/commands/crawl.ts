@@ -1,6 +1,6 @@
 import {Args, Command, Flags} from '@oclif/core'
 import {IndexerService} from '../services/IndexerService.js'
-import {HashingAlgorithm} from '../services/HashingService.js'
+import {HashingAlgorithmType} from '../services/HashingService.js'
 import {getHashingAlgorithms, humanReadableSeconds} from '../utils.js'
 import {Logger} from '../services/LoggerService.js'
 
@@ -17,7 +17,7 @@ export default class Crawl extends Command {
       char: 'a',
       description: 'hashing algorithms to use',
       multiple: true,
-      options: Object.values(HashingAlgorithm),
+      options: Object.values(HashingAlgorithmType),
     }),
     exif: Flags.boolean({
       description: 'extract exif data',

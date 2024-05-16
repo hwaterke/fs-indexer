@@ -2,7 +2,7 @@ import {access, lstat} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import * as nodePath from 'node:path'
 import {homedir} from 'node:os'
-import {HashingAlgorithm} from './services/HashingService.js'
+import {HashingAlgorithmType} from './services/HashingService.js'
 import {Logger} from './services/LoggerService.js'
 import {FfmpegService} from './services/FfmpegService.js'
 import {EXIF_TAGS, ExiftoolService} from '@hwaterke/media-probe'
@@ -11,9 +11,9 @@ export const uniq = <T>(array: T[]): T[] => [...new Set(array)]
 
 export const getHashingAlgorithms = (
   input: string[] | undefined
-): HashingAlgorithm[] => {
+): HashingAlgorithmType[] => {
   const result = uniq(input || [])
-  return result as HashingAlgorithm[]
+  return result as HashingAlgorithmType[]
 }
 
 export const humanReadableSeconds = (seconds: number): string => {

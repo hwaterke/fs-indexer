@@ -3,7 +3,7 @@ import {access, stat, unlink} from 'node:fs/promises'
 import {constants} from 'node:fs'
 import {DatabaseService} from './DatabaseService.js'
 import * as nodePath from 'node:path'
-import {HashingAlgorithm, HashingService} from './HashingService.js'
+import {HashingAlgorithmType, HashingService} from './HashingService.js'
 import {DuplicateFinderService} from './DuplicateFinderService.js'
 import {Logger} from './LoggerService.js'
 import {IndexedFile, IndexedFileWithHashes} from '../drizzle/schema.js'
@@ -12,7 +12,7 @@ import {walkDirOrFile} from '../walkDirOrFile.js'
 type CrawlingOptions = {
   limit?: number
   minutes?: number
-  hashingAlgorithms: HashingAlgorithm[]
+  hashingAlgorithms: HashingAlgorithmType[]
   includeExif: boolean
   ignoreFileName?: string
 }
@@ -20,7 +20,7 @@ type CrawlingOptions = {
 type VerifyOptions = {
   limit?: number
   minutes?: number
-  hashingAlgorithms: HashingAlgorithm[]
+  hashingAlgorithms: HashingAlgorithmType[]
   purge: boolean
 }
 
@@ -58,7 +58,7 @@ export class IndexerService {
     const totalSize = await this.databaseService.totalSize()
     Logger.info(`${totalSize} bytes`)
 
-    for await (const algorithm of Object.values(HashingAlgorithm)) {
+    for await (const algorithm of Object.values(HashingAlgorithmType)) {
       const algoHashCount = await this.databaseService.countHashes(algorithm)
       Logger.info(
         `${algoHashCount} hashes (${algorithm}) - ${Math.round(
@@ -94,10 +94,6 @@ export class IndexerService {
       },
       callback: async (filePath) => {
         Logger.debug(`Looking up ${filePath}`)
-        const metadata = await this.getFileMetadata({
-          filePath,
-          includeExif: options.includeExif,
-        })
 
         const similarFiles = await this.lookupExistingEntries(filePath)
 
@@ -122,6 +118,10 @@ export class IndexerService {
         }
 
         // Find similar exif date
+        const metadata = await this.getFileMetadata({
+          filePath,
+          includeExif: options.includeExif,
+        })
         if (metadata.exifDate) {
           const similarExifDate =
             await this.databaseService.findFilesByExifDate(metadata.exifDate)
@@ -233,7 +233,7 @@ export class IndexerService {
       // Grab next batch of files
       const files = await this.databaseService.findByValidityInPath({
         path,
-        count: Math.min(200, filesToProcess - this.metrics.filesCrawled),
+        count: Math.min(100, filesToProcess - this.metrics.filesCrawled),
       })
 
       Logger.debug(`${files.length} files to verify`)
@@ -303,18 +303,18 @@ export class IndexerService {
         )
 
         if (existingHash) {
-          const hash = await this.hashingService.hash(
+          const hashResult = await this.hashingService.hash(
             file.path,
             hashingAlgorithm
           )
-          if (hash === existingHash.value) {
+          if (hashResult !== null && hashResult.hash === existingHash.value) {
             await this.databaseService.updateHashValidity(
               file.id,
               existingHash.algorithm
             )
           } else {
             Logger.info(
-              `Inconsistent hash ${hashingAlgorithm} for ${file.path}. ${hash} vs ${existingHash.value}`
+              `Inconsistent hash ${hashingAlgorithm} for ${file.path}. ${hashResult?.hash} vs ${existingHash.value}`
             )
           }
         } else {
@@ -328,15 +328,18 @@ export class IndexerService {
     }
   }
 
+  /**
+   * Hashes a file using the provided hashing algorithms if it hasn't been hashed yet.
+   */
   private async hashFile({
     indexedFile,
     hashingAlgorithms,
   }: {
-    hashingAlgorithms: HashingAlgorithm[]
+    hashingAlgorithms: HashingAlgorithmType[]
     indexedFile: {
       id: string
       path: string
-      hashes: {algorithm: HashingAlgorithm}[]
+      hashes: {algorithm: HashingAlgorithmType}[]
     }
   }): Promise<void> {
     let hashesComputed = false
@@ -346,17 +349,26 @@ export class IndexerService {
         if (
           !indexedFile.hashes.some((he) => he.algorithm === hashingAlgorithm)
         ) {
-          const hash = await this.hashingService.hash(
+          const result = await this.hashingService.hash(
             indexedFile.path,
             hashingAlgorithm
           )
+
+          if (result === null) {
+            Logger.info(
+              `Failed to compute hash ${hashingAlgorithm} for ${indexedFile.path}`
+            )
+            continue
+          }
+
           this.metrics.hashesComputed++
           hashesComputed = true
 
           await this.databaseService.createHash({
             indexedFileId: indexedFile.id,
             algorithm: hashingAlgorithm,
-            hash,
+            version: result.version,
+            hash: result.hash,
           })
         }
       }
@@ -379,25 +391,31 @@ export class IndexerService {
     const filesWithSameSize = await this.databaseService.findFilesBySize(size)
     Logger.debug(`Found ${filesWithSameSize.length} files with the same size`)
 
-    const hashes: Map<HashingAlgorithm, string> = new Map()
-    const getHash = async (algorithm: HashingAlgorithm) => {
+    const hashes: Map<HashingAlgorithmType, string> = new Map()
+    const getHash = async (algorithm: HashingAlgorithmType) => {
       if (!hashes.has(algorithm)) {
-        hashes.set(algorithm, await this.hashingService.hash(path, algorithm))
+        const result = await this.hashingService.hash(path, algorithm)
+        if (result !== null) {
+          hashes.set(algorithm, result.hash)
+        }
       }
       return hashes.get(algorithm)
     }
 
     for (const file of filesWithSameSize) {
       let allHashesMatch = true
+      let someHashesMatch = false
       for (const hashEntity of file.hashes) {
         const computedHash = await getHash(hashEntity.algorithm)
         if (computedHash !== hashEntity.value) {
           allHashesMatch = false
           break
         }
+        someHashesMatch = true
       }
 
-      if (allHashesMatch) {
+      // TODO decide if we use allHashesMatch or someHashesMatch
+      if (someHashesMatch) {
         existingEntries.push(file)
       }
     }

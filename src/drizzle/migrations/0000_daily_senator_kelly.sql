@@ -1,11 +1,11 @@
 CREATE TABLE `hash` (
 	`file_id` text(24) NOT NULL,
 	`algorithm` text NOT NULL,
+	`version` text NOT NULL,
 	`value` text NOT NULL,
 	`validated_at` integer NOT NULL,
 	`created_at` integer DEFAULT (datetime('now')) NOT NULL,
-	`updated_at` integer DEFAULT (datetime('now')) NOT NULL,
-	PRIMARY KEY(`algorithm`, `file_id`),
+	PRIMARY KEY(`algorithm`, `file_id`, `version`),
 	FOREIGN KEY (`file_id`) REFERENCES `file`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint

@@ -1,6 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
+  "id": "81aeef82-1f45-48f2-8536-dc5188cf8f81",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "hash": {
       "name": "hash",
@@ -14,6 +16,13 @@
         },
         "algorithm": {
           "name": "algorithm",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "version": {
+          "name": "version",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -40,14 +49,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(datetime('now'))"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(datetime('now'))"
         }
       },
       "indexes": {},
@@ -55,23 +56,16 @@
         "hash_file_id_file_id_fk": {
           "name": "hash_file_id_file_id_fk",
           "tableFrom": "hash",
-          "columnsFrom": [
-            "file_id"
-          ],
           "tableTo": "file",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "columnsFrom": ["file_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "hash_algorithm_file_id_pk": {
-          "columns": [
-            "algorithm",
-            "file_id"
-          ],
+          "columns": ["algorithm", "file_id", "version"],
           "name": "hash_algorithm_file_id_pk"
         }
       },
@@ -224,9 +218,8 @@
   },
   "enums": {},
   "_meta": {
+    "schemas": {},
     "tables": {},
     "columns": {}
-  },
-  "id": "98abb961-bf12-4aec-a71b-478c93411de3",
-  "prevId": "00000000-0000-0000-0000-000000000000"
+  }
 }
