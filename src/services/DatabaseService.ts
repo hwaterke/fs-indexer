@@ -131,6 +131,27 @@ export class DatabaseService {
     })
   }
 
+  async findFilesByHashValue(
+    algorithm: HashingAlgorithmType,
+    hash: string
+  ): Promise<IndexedFile[]> {
+    const results = await this.db
+      .select()
+      .from(schema.hashTable)
+      .innerJoin(
+        indexedFileTable,
+        eq(schema.hashTable.fileId, indexedFileTable.id)
+      )
+      .where(
+        and(
+          eq(schema.hashTable.algorithm, algorithm),
+          eq(schema.hashTable.value, hash)
+        )
+      )
+
+    return results.map((result) => result.file)
+  }
+
   async findFilesByPrefix(prefix: string): Promise<IndexedFile[]> {
     return this.db.query.indexedFileTable.findMany({
       where: like(indexedFileTable.basename, `${prefix}%`),

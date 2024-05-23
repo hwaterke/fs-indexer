@@ -23,6 +23,14 @@ export const indexedFileTable = sqliteTable('file', {
   basename: text('basename').notNull(),
   extension: text('extension'),
   validatedAt: integer('validated_at', {mode: 'timestamp'}).notNull(),
+  createdAt: integer('created_at', {mode: 'timestamp'})
+    .default(sql`(datetime('now'))`)
+    .notNull(),
+  updatedAt: integer('updated_at', {mode: 'timestamp'})
+    .default(sql`(datetime('now'))`)
+    .notNull(),
+
+  // Exif metadata
   make: text('make'),
   model: text('model'),
   width: integer('width'),
@@ -32,12 +40,7 @@ export const indexedFileTable = sqliteTable('file', {
   livePhotoTarget: text('live_photo_target'),
   latitude: real('latitude'),
   longitude: real('longitude'),
-  createdAt: integer('created_at', {mode: 'timestamp'})
-    .default(sql`(datetime('now'))`)
-    .notNull(),
-  updatedAt: integer('updated_at', {mode: 'timestamp'})
-    .default(sql`(datetime('now'))`)
-    .notNull(),
+  exifValidatedAt: integer('exif_validated_at', {mode: 'timestamp'}),
 })
 
 export const hashTable = sqliteTable(

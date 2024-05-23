@@ -1,0 +1,1 @@
+ALTER TABLE `file` ADD `exif_validated_at` integer;

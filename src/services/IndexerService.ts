@@ -8,6 +8,8 @@ import {DuplicateFinderService} from './DuplicateFinderService.js'
 import {Logger} from './LoggerService.js'
 import {IndexedFile, IndexedFileWithHashes} from '../drizzle/schema.js'
 import {walkDirOrFile} from '../walkDirOrFile.js'
+import {formatBytes, formatNumber} from '../utils/Formatter.js'
+import {isNullish} from 'remeda'
 
 type CrawlingOptions = {
   limit?: number
@@ -52,11 +54,11 @@ export class IndexerService {
 
   async info(options: InfoOptions): Promise<void> {
     const fileCount = await this.databaseService.countFiles()
-    Logger.info(`${fileCount} files indexed`)
+    Logger.info(`${formatNumber(fileCount)} files indexed`)
     const hashCount = await this.databaseService.countHashes()
-    Logger.info(`${hashCount} hashes`)
+    Logger.info(`${formatNumber(hashCount)} hashes`)
     const totalSize = await this.databaseService.totalSize()
-    Logger.info(`${totalSize} bytes`)
+    Logger.info(`${formatBytes(totalSize)} - ${formatNumber(totalSize)} bytes`)
 
     for await (const algorithm of Object.values(HashingAlgorithmType)) {
       const algoHashCount = await this.databaseService.countHashes(algorithm)
@@ -95,10 +97,12 @@ export class IndexerService {
       callback: async (filePath) => {
         Logger.debug(`Looking up ${filePath}`)
 
-        const similarFiles = await this.lookupExistingEntries(filePath)
+        const {exactHashes, similarityHashes} =
+          await this.lookupExistingEntries(filePath)
 
-        if (similarFiles.length > 0) {
-          if (similarFiles.some((f) => f.path === filePath)) {
+        if (exactHashes.length > 0) {
+          Logger.info(`Files with exact hashes`)
+          if (exactHashes.some((f) => f.path === filePath)) {
             Logger.info(`🆗 ${filePath}`)
           } else {
             Logger.info(`✅ ${filePath}`)
@@ -110,7 +114,22 @@ export class IndexerService {
             }
           }
 
-          for (const file of similarFiles) {
+          for (const file of exactHashes) {
+            Logger.debug(`  ${file.path}`)
+          }
+        } else {
+          Logger.info(`❌ ${filePath}`)
+        }
+
+        if (similarityHashes.length > 0) {
+          Logger.info(`Files with similar hashes`)
+          if (similarityHashes.some((f) => f.path === filePath)) {
+            Logger.info(`🆗 ${filePath}`)
+          } else {
+            Logger.info(`✅ ${filePath}`)
+          }
+
+          for (const file of similarityHashes) {
             Logger.debug(`  ${file.path}`)
           }
         } else {
@@ -174,8 +193,11 @@ export class IndexerService {
             indexedFile: existingEntry,
             hashingAlgorithms: options.hashingAlgorithms,
           })
-          if (options.includeExif) {
-            await this.addMissingExifMetadata({indexedFile: existingEntry})
+          if (options.includeExif && isNullish(existingEntry.exifValidatedAt)) {
+            await this.databaseService.updateFileExifMetadata({
+              indexedFileId: existingEntry.id,
+              exifMetadata: await extractExif(existingEntry.path),
+            })
           }
         } else {
           Logger.debug(`Indexing ${filePath}`)
@@ -354,10 +376,8 @@ export class IndexerService {
             hashingAlgorithm
           )
 
+          // Hashing algorithm is not applicable to the file
           if (result === null) {
-            Logger.info(
-              `Failed to compute hash ${hashingAlgorithm} for ${indexedFile.path}`
-            )
             continue
           }
 
@@ -379,48 +399,69 @@ export class IndexerService {
     }
   }
 
-  private async lookupExistingEntries(path: string): Promise<IndexedFile[]> {
+  private async lookupExistingEntries(path: string): Promise<{
+    exactHashes: IndexedFile[]
+    similarityHashes: IndexedFile[]
+  }> {
     Logger.debug(`Looking up for entries similar to ${path}`)
     const {size} = await this.getFileMetadata({
       filePath: path,
       includeExif: false,
     })
 
-    const existingEntries: IndexedFile[] = []
+    const algorithmIsExact: Record<HashingAlgorithmType, boolean> = {
+      [HashingAlgorithmType.XXHASH]: true,
+      [HashingAlgorithmType.BLAKE3]: true,
+      [HashingAlgorithmType.IDENTIFY]: false,
+      [HashingAlgorithmType.FFMPG_SHA256]: false,
+    }
 
-    const filesWithSameSize = await this.databaseService.findFilesBySize(size)
-    Logger.debug(`Found ${filesWithSameSize.length} files with the same size`)
-
-    const hashes: Map<HashingAlgorithmType, string> = new Map()
+    // Hashes of the file being looked up
+    const hashes: Map<
+      HashingAlgorithmType,
+      {
+        hash: string
+        version: string
+      }
+    > = new Map()
     const getHash = async (algorithm: HashingAlgorithmType) => {
       if (!hashes.has(algorithm)) {
         const result = await this.hashingService.hash(path, algorithm)
         if (result !== null) {
-          hashes.set(algorithm, result.hash)
+          hashes.set(algorithm, result)
         }
       }
       return hashes.get(algorithm)
     }
 
-    for (const file of filesWithSameSize) {
-      let allHashesMatch = true
-      let someHashesMatch = false
-      for (const hashEntity of file.hashes) {
-        const computedHash = await getHash(hashEntity.algorithm)
-        if (computedHash !== hashEntity.value) {
-          allHashesMatch = false
-          break
-        }
-        someHashesMatch = true
-      }
+    const exactMatches: IndexedFile[] = []
+    const similarMatches: IndexedFile[] = []
 
-      // TODO decide if we use allHashesMatch or someHashesMatch
-      if (someHashesMatch) {
-        existingEntries.push(file)
+    const filesWithSameSize = await this.databaseService.findFilesBySize(size)
+    Logger.debug(`Found ${filesWithSameSize.length} files with the same size`)
+
+    for (const algorithm of Object.values(HashingAlgorithmType)) {
+      const hashResult = await getHash(algorithm)
+      if (hashResult) {
+        const filesWithSameHash =
+          await this.databaseService.findFilesByHashValue(
+            algorithm,
+            hashResult.hash
+          )
+
+        for (const file of filesWithSameHash) {
+          const listToAdd = algorithmIsExact[algorithm]
+            ? exactMatches
+            : similarMatches
+
+          if (!listToAdd.some((f) => f.path === file.path)) {
+            listToAdd.push(file)
+          }
+        }
       }
     }
 
-    return existingEntries
+    return {exactHashes: exactMatches, similarityHashes: similarMatches}
   }
 
   private async getFileMetadata({
@@ -441,23 +482,6 @@ export class IndexerService {
       extension: nodePath.extname(filePath),
       validatedAt: new Date(),
       ...(includeExif && (await extractExif(filePath))),
-    }
-  }
-
-  private async addMissingExifMetadata({
-    indexedFile,
-  }: {
-    indexedFile: {
-      id: string
-      path: string
-      width: number | null
-    }
-  }): Promise<void> {
-    if (indexedFile.width === undefined || indexedFile.width === null) {
-      await this.databaseService.updateFileExifMetadata({
-        indexedFileId: indexedFile.id,
-        exifMetadata: await extractExif(indexedFile.path),
-      })
     }
   }
 

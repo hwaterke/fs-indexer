@@ -92,6 +92,7 @@ export type ExifMetadata = {
   livePhotoTarget?: string
   latitude?: number
   longitude?: number
+  exifValidatedAt: Date
 }
 
 const EXIF_EXTENSIONS = new Set([
@@ -118,7 +119,9 @@ const toNumber = (input: string | number | undefined): number | undefined => {
 export const extractExif = async (path: string): Promise<ExifMetadata> => {
   // Skip unknown extensions
   if (!EXIF_EXTENSIONS.has(nodePath.extname(path).toLocaleLowerCase())) {
-    return {}
+    return {
+      exifValidatedAt: new Date(),
+    }
   }
 
   const service = new ExiftoolService({debug: true})
@@ -169,5 +172,6 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
     livePhotoTarget: exif[EXIF_TAGS.LIVE_PHOTO_UUID_VIDEO],
     latitude: gps?.latitude,
     longitude: gps?.longitude,
+    exifValidatedAt: new Date(),
   }
 }
