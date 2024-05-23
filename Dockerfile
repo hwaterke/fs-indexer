@@ -11,7 +11,7 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 ENV EXIFTOOL_VERSION=12.84
-RUN apk add --no-cache perl make xxhash b3sum ffmpeg
+RUN apk add --no-cache perl make xxhash b3sum ffmpeg tiff libheif imagemagick
 RUN wget https://exiftool.org/Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
     tar -xzf Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
     rm Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
