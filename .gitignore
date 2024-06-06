@@ -5,8 +5,11 @@
 /lib
 /tmp
 node_modules
-.idea
-fs-index.db
-test-files
-*.db
 oclif.manifest.json
+.idea
+.DS_Store
+
+# Test files
+*.db
+test-files
+test-folder

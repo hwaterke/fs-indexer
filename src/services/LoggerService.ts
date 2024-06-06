@@ -20,7 +20,15 @@ export const Logger = {
     logger.info(message)
   },
 
+  error(message: string): void {
+    logger.error(message)
+  },
+
   setLevel(level: 'debug' | 'info'): void {
     logger.level = level
+  },
+
+  isDebug(): boolean {
+    return logger.level === 'debug'
   },
 }

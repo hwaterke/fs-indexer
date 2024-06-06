@@ -45,6 +45,7 @@ export class IndexerService {
     newFilesIndexed: 0,
     filesHashed: 0,
     hashesComputed: 0,
+    exifExtracted: 0,
     startTimeMillis: Date.now(),
   }
 
@@ -183,60 +184,69 @@ export class IndexerService {
         ignoreFileName: options.ignoreFileName ?? null,
       },
       callback: async (filePath) => {
-        // Is it already indexed?
-        const existingEntry = await this.databaseService.findFile(filePath)
+        try {
+          // Is it already indexed?
+          const existingEntry = await this.databaseService.findFile(filePath)
 
-        this.metrics.filesCrawled++
+          this.metrics.filesCrawled++
 
-        if (existingEntry) {
-          await this.hashFile({
-            indexedFile: existingEntry,
-            hashingAlgorithms: options.hashingAlgorithms,
-          })
-          if (options.includeExif && isNullish(existingEntry.exifValidatedAt)) {
-            await this.databaseService.updateFileExifMetadata({
-              indexedFileId: existingEntry.id,
-              exifMetadata: await extractExif(existingEntry.path),
+          if (existingEntry) {
+            await this.hashFile({
+              indexedFile: existingEntry,
+              hashingAlgorithms: options.hashingAlgorithms,
+            })
+            if (
+              options.includeExif &&
+              isNullish(existingEntry.exifValidatedAt)
+            ) {
+              await this.databaseService.updateFileExifMetadata({
+                indexedFileId: existingEntry.id,
+                exifMetadata: await extractExif(existingEntry.path),
+              })
+              this.metrics.exifExtracted++
+            }
+          } else {
+            Logger.debug(`Indexing ${filePath}`)
+
+            const metadata = await this.getFileMetadata({
+              filePath,
+              includeExif: options.includeExif,
+            })
+
+            const [fileEntity] = await this.databaseService.createFile(metadata)
+            this.metrics.newFilesIndexed++
+
+            await this.hashFile({
+              hashingAlgorithms: options.hashingAlgorithms,
+              indexedFile: {
+                id: fileEntity.id,
+                path: fileEntity.path,
+                hashes: [],
+              },
             })
           }
-        } else {
-          Logger.debug(`Indexing ${filePath}`)
 
-          const metadata = await this.getFileMetadata({
-            filePath,
-            includeExif: options.includeExif,
-          })
+          const shouldStopForLimit =
+            options.limit !== undefined &&
+            Math.max(this.metrics.newFilesIndexed, this.metrics.filesHashed) >=
+              options.limit
 
-          const [fileEntity] = await this.databaseService.createFile(metadata)
-          this.metrics.newFilesIndexed++
+          const shouldStopForTime =
+            options.minutes !== undefined &&
+            this.elapsedMinutes() > options.minutes
 
-          await this.hashFile({
-            hashingAlgorithms: options.hashingAlgorithms,
-            indexedFile: {
-              id: fileEntity.id,
-              path: fileEntity.path,
-              hashes: [],
-            },
-          })
-        }
-
-        const shouldStopForLimit =
-          options.limit !== undefined &&
-          Math.max(this.metrics.newFilesIndexed, this.metrics.filesHashed) >=
-            options.limit
-
-        const shouldStopForTime =
-          options.minutes !== undefined &&
-          this.elapsedMinutes() > options.minutes
-
-        return {
-          stop: shouldStopForLimit || shouldStopForTime,
+          return {
+            stop: shouldStopForLimit || shouldStopForTime,
+          }
+        } catch (error) {
+          Logger.error(`Error processing ${filePath}`)
+          throw error
         }
       },
     })
 
     Logger.info(
-      `${this.metrics.filesCrawled} files crawled. ${this.metrics.newFilesIndexed} newly indexed. ${this.metrics.filesHashed} files hashed.`
+      `${this.metrics.filesCrawled} files crawled. ${this.metrics.newFilesIndexed} newly indexed. ${this.metrics.filesHashed} files hashed. ${this.metrics.exifExtracted} exif extracted.`
     )
   }
 
@@ -473,6 +483,12 @@ export class IndexerService {
   }) {
     const stats = await stat(filePath)
 
+    let exifData
+    if (includeExif) {
+      exifData = await extractExif(filePath)
+      this.metrics.exifExtracted++
+    }
+
     return {
       path: filePath,
       size: stats.size,
@@ -481,7 +497,7 @@ export class IndexerService {
       basename: nodePath.basename(filePath),
       extension: nodePath.extname(filePath),
       validatedAt: new Date(),
-      ...(includeExif && (await extractExif(filePath))),
+      ...exifData,
     }
   }
 
