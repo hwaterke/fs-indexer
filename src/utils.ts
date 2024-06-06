@@ -167,7 +167,7 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
     height: toNumber(
       EXIF_HEIGHT_KEYS.map((k) => exif[k]).find((key) => key !== undefined)
     ),
-    exifDate: date,
+    exifDate: date ? date.iso : null,
     livePhotoSource: exif[EXIF_TAGS.LIVE_PHOTO_UUID_PHOTO],
     livePhotoTarget: exif[EXIF_TAGS.LIVE_PHOTO_UUID_VIDEO],
     latitude: gps?.latitude,
