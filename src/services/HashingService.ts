@@ -108,7 +108,7 @@ class FfmpegSha256 extends HashingAlgorithm {
 
   async hash(path: string): Promise<string> {
     const {stdout} = await exec(
-      `ffmpeg -i "${path}" -map 0 -c copy -f hash -hash sha256 -`
+      `ffmpeg -i "${path}" -loglevel error -map 0 -c copy -f hash -hash sha256 -`
     )
     return stdout.trim()
   }
