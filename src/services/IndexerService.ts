@@ -32,6 +32,7 @@ type InfoOptions = {
 
 type LookupOptions = {
   remove: boolean
+  removeSimilar: boolean
   includeExif: boolean
 }
 
@@ -101,6 +102,8 @@ export class IndexerService {
         const {exactHashes, similarityHashes} =
           await this.lookupExistingEntries(filePath)
 
+        let removed = false
+
         if (exactHashes.length > 0) {
           Logger.info(`Files with exact hashes`)
           if (exactHashes.some((f) => f.path === filePath)) {
@@ -109,9 +112,10 @@ export class IndexerService {
             Logger.info(`✅ ${filePath}`)
             if (options.remove) {
               Logger.info(
-                `Deleting ${filePath} as similar files were found in the index`
+                `Deleting ${filePath} as copies were found in the index`
               )
               await unlink(filePath)
+              removed = true
             }
           }
 
@@ -122,49 +126,60 @@ export class IndexerService {
           Logger.info(`❌ ${filePath}`)
         }
 
-        if (similarityHashes.length > 0) {
-          Logger.info(`Files with similar hashes`)
-          if (similarityHashes.some((f) => f.path === filePath)) {
-            Logger.info(`🆗 ${filePath}`)
-          } else {
-            Logger.info(`✅ ${filePath}`)
-          }
+        if (!removed) {
+          if (similarityHashes.length > 0) {
+            Logger.info(`Files with similar hashes`)
+            if (similarityHashes.some((f) => f.path === filePath)) {
+              Logger.info(`🆗 ${filePath}`)
+            } else {
+              Logger.info(`✅ ${filePath}`)
+              if (options.removeSimilar) {
+                Logger.info(
+                  `Deleting ${filePath} as similar files were found in the index`
+                )
+                await unlink(filePath)
+                removed = true
+              }
+            }
 
-          for (const file of similarityHashes) {
-            Logger.debug(`  ${file.path}`)
-          }
-        } else {
-          Logger.info(`❌ ${filePath}`)
-        }
-
-        // Find similar exif date
-        const metadata = await this.getFileMetadata({
-          filePath,
-          includeExif: options.includeExif,
-        })
-        if (metadata.exifDate) {
-          const similarExifDate =
-            await this.databaseService.findFilesByExifDate(metadata.exifDate)
-          if (similarExifDate.length > 0) {
-            Logger.info(`Files with similar exif date`)
-            for (const file of similarExifDate) {
+            for (const file of similarityHashes) {
               Logger.debug(`  ${file.path}`)
             }
+          } else {
+            Logger.info(`❌ ${filePath}`)
           }
         }
 
-        // Find similar prefix
-        const prefixMatch = nodePath
-          .basename(filePath)
-          .match(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}/)
-        if (prefixMatch) {
-          const similarPrefix = await this.databaseService.findFilesByPrefix(
-            prefixMatch[0]
-          )
-          if (similarPrefix.length > 0) {
-            Logger.info(`Files with similar prefix`)
-            for (const file of similarPrefix) {
-              Logger.debug(`  ${file.path}`)
+        if (!removed) {
+          // Find similar exif date
+          const metadata = await this.getFileMetadata({
+            filePath,
+            includeExif: options.includeExif,
+          })
+          if (metadata.exifDate) {
+            const similarExifDate =
+              await this.databaseService.findFilesByExifDate(metadata.exifDate)
+            if (similarExifDate.length > 0) {
+              Logger.info(`Files with similar exif date`)
+              for (const file of similarExifDate) {
+                Logger.debug(`  ${file.path}`)
+              }
+            }
+          }
+
+          // Find similar prefix
+          const prefixMatch = nodePath
+            .basename(filePath)
+            .match(/^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}/)
+          if (prefixMatch) {
+            const similarPrefix = await this.databaseService.findFilesByPrefix(
+              prefixMatch[0]
+            )
+            if (similarPrefix.length > 0) {
+              Logger.info(`Files with similar prefix`)
+              for (const file of similarPrefix) {
+                Logger.debug(`  ${file.path}`)
+              }
             }
           }
         }

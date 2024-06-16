@@ -20,6 +20,10 @@ export default class Lookup extends Command {
         'remove files if similar found in the index. Be careful with this flag. Only hashes are compared, not the files content.',
       default: false,
     }),
+    removeSimilar: Flags.boolean({
+      description: 'remove files if similar found in the index',
+      default: false,
+    }),
     exif: Flags.boolean({
       description: 'look for files with similar exif date',
       default: false,
@@ -40,6 +44,7 @@ export default class Lookup extends Command {
     const indexer = new IndexerService(flags.database)
     await indexer.lookup(args.path, {
       remove: flags.remove,
+      removeSimilar: flags.removeSimilar,
       includeExif: flags.exif,
     })
     console.log(
