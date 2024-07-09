@@ -330,8 +330,8 @@ export class IndexerService {
         metadata.path === file.path &&
         metadata.basename === file.basename &&
         metadata.extension === file.extension &&
-        metadata.mtime === file.mtime &&
-        metadata.ctime === file.ctime
+        metadata.mtime.getTime() === file.mtime.getTime() &&
+        metadata.ctime.getTime() === file.ctime.getTime()
       ) {
         await this.databaseService.updateFileValidity({
           indexedFileId: file.id,
@@ -503,6 +503,10 @@ export class IndexerService {
       exifData = await extractExif(filePath)
       this.metrics.exifExtracted++
     }
+
+    // We remove the subsecond part of the time as we store them as integers
+    stats.ctime.setMilliseconds(0)
+    stats.mtime.setMilliseconds(0)
 
     return {
       path: filePath,
