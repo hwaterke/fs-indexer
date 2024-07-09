@@ -330,8 +330,7 @@ export class IndexerService {
         metadata.path === file.path &&
         metadata.basename === file.basename &&
         metadata.extension === file.extension &&
-        metadata.mtime.getTime() === file.mtime.getTime() &&
-        metadata.ctime.getTime() === file.ctime.getTime()
+        metadata.mtime.getTime() === file.mtime.getTime()
       ) {
         await this.databaseService.updateFileValidity({
           indexedFileId: file.id,
@@ -505,13 +504,11 @@ export class IndexerService {
     }
 
     // We remove the subsecond part of the time as we store them as integers
-    stats.ctime.setMilliseconds(0)
     stats.mtime.setMilliseconds(0)
 
     return {
       path: filePath,
       size: stats.size,
-      ctime: stats.ctime,
       mtime: stats.mtime,
       basename: nodePath.basename(filePath),
       extension: nodePath.extname(filePath),

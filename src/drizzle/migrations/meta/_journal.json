@@ -15,6 +15,13 @@
       "when": 1716493683385,
       "tag": "0001_classy_malice",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1720559857703,
+      "tag": "0002_groovy_randall_flagg",
+      "breakpoints": true
     }
   ]
 }
