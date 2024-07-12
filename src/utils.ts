@@ -125,7 +125,7 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
   }
 
   const service = new ExiftoolService({
-    debug: LoggerService.getLogger().isDebug(),
+    logger: LoggerService.getLogger(),
   })
 
   LoggerService.getLogger().debug(`Extracting exif for ${path}`)
@@ -143,9 +143,7 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
     gps === null &&
     ['.mov', '.mp4'].includes(nodePath.extname(path).toLowerCase())
   ) {
-    const ffmpegService = new FfmpegService({
-      debug: LoggerService.getLogger().isDebug(),
-    })
+    const ffmpegService = new FfmpegService()
     gps = await ffmpegService.extractGpsCoordinatesFromSubtitleFile(path)
 
     if (gps === null) {

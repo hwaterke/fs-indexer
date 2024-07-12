@@ -1,15 +1,12 @@
 import {promisify} from 'node:util'
 import {exec as callbackExec} from 'node:child_process'
 import {existsSync, readFileSync} from 'node:fs'
+import {LoggerService} from './LoggerService.js'
 
 const exec = promisify(callbackExec)
 
-type FfmpegServiceConfig = {
-  debug: boolean
-}
-
 export class FfmpegService {
-  constructor(private config: FfmpegServiceConfig) {}
+  private readonly logger = LoggerService.getLogger()
 
   async extractGpsCoordinatesFromSubtitles(path: string): Promise<{
     latitude: number
@@ -63,7 +60,7 @@ export class FfmpegService {
       return null
     }
 
-    const srtContent = readFileSync(subtitleFilePath, 'utf-8')
+    const srtContent = readFileSync(subtitleFilePath, 'utf8')
     const srtLines = srtContent.split('\n')
     const gpsPattern = /\[latitude: (\d+\.\d+)] \[longitude: (\d+\.\d+)]/
 
@@ -86,9 +83,7 @@ export class FfmpegService {
   private async rawFfprobe(command: string) {
     const fullCommand = `ffprobe ${command}`
 
-    if (this.config.debug) {
-      console.log(fullCommand)
-    }
+    this.logger.debug(fullCommand)
 
     const {stdout} = await exec(fullCommand)
     return stdout
@@ -97,9 +92,7 @@ export class FfmpegService {
   private async rawFfmpeg(command: string) {
     const fullCommand = `ffmpeg ${command}`
 
-    if (this.config.debug) {
-      console.log(fullCommand)
-    }
+    this.logger.debug(fullCommand)
 
     const {stdout} = await exec(fullCommand)
     return stdout

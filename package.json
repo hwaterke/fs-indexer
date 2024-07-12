@@ -40,7 +40,7 @@
     "db:drop": "drizzle-kit drop"
   },
   "dependencies": {
-    "@hwaterke/media-probe": "npm:@jsr/hwaterke__media-probe@^0.0.6",
+    "@hwaterke/media-probe": "npm:@jsr/hwaterke__media-probe@^0.0.7",
     "@oclif/core": "^4",
     "@oclif/plugin-help": "^6",
     "@paralleldrive/cuid2": "^2.2.2",
