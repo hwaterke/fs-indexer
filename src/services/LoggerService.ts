@@ -1,34 +1,79 @@
 import * as winston from 'winston'
+import DailyRotateFile from 'winston-daily-rotate-file'
 
-const logger = winston.createLogger({
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      ),
-    }),
-  ],
-})
+class Logger {
+  constructor(private logger: winston.Logger) {}
 
-export const Logger = {
   debug(message: string): void {
-    logger.debug(message)
-  },
+    this.logger.debug(message)
+  }
 
   info(message: string): void {
-    logger.info(message)
-  },
+    this.logger.info(message)
+  }
 
   error(message: string): void {
-    logger.error(message)
-  },
-
-  setLevel(level: 'debug' | 'info'): void {
-    logger.level = level
-  },
+    this.logger.error(message)
+  }
 
   isDebug(): boolean {
-    return logger.level === 'debug'
-  },
+    return this.logger.level === 'debug'
+  }
+}
+
+export class LoggerService {
+  private static logger: Logger | null = null
+
+  public static configure({
+    debug,
+    logFolder,
+  }: {
+    logFolder?: string
+    debug?: boolean
+  }) {
+    if (this.logger === null) {
+      const transportArray: winston.transport[] = []
+
+      if (logFolder) {
+        transportArray.push(
+          new DailyRotateFile({
+            filename: 'indexer-%DATE%.log',
+            datePattern: 'YYYY-MM-DD-HH',
+            zippedArchive: true,
+            maxSize: '20m',
+            format: winston.format.combine(
+              winston.format.timestamp(),
+              winston.format.json()
+            ),
+          })
+        )
+      } else {
+        transportArray.push(
+          new winston.transports.Console({
+            format: winston.format.combine(
+              winston.format.colorize(),
+              winston.format.timestamp(),
+              winston.format.printf(({timestamp, level, message}) => {
+                return `${timestamp} [${level}]: ${message}`
+              })
+            ),
+          })
+        )
+      }
+
+      this.logger = new Logger(
+        winston.createLogger({
+          level: debug ? 'debug' : 'info',
+          transports: transportArray,
+        })
+      )
+    }
+  }
+
+  public static getLogger(): Logger {
+    if (!LoggerService.logger) {
+      throw new Error('LoggerService is not configured.')
+    }
+    return LoggerService.logger
+  }
 }

@@ -1,7 +1,7 @@
 import {opendir, readFile, stat} from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import ignore, {Ignore} from 'ignore'
-import {Logger} from './services/LoggerService.js'
+import {LoggerService} from './services/LoggerService.js'
 
 type WalkCallback = (path: string) => Promise<{stop: boolean}>
 
@@ -11,6 +11,7 @@ type Options = {
 
 class IgnoreManager {
   private ignoreStack: {ig: Ignore; path: string}[] = []
+  private logger = LoggerService.getLogger()
 
   constructor(private readonly ignoreFileName: string | null) {}
 
@@ -22,7 +23,7 @@ class IgnoreManager {
     const ignoreFilePath = nodePath.join(dirPath, this.ignoreFileName)
     try {
       const ignoreFileContent = await readFile(ignoreFilePath, 'utf8')
-      Logger.debug(`Adding ignore file: ${ignoreFilePath}`)
+      this.logger.debug(`Adding ignore file: ${ignoreFilePath}`)
       this.ignoreStack.push({
         // @ts-expect-error - ignore types are wrong
         ig: ignore().add(ignoreFileContent),
@@ -37,7 +38,7 @@ class IgnoreManager {
   }
 
   popIgnoreFile() {
-    Logger.debug(`Popping ignore file`)
+    this.logger.debug(`Popping ignore file`)
     this.ignoreStack.pop()
   }
 
@@ -46,7 +47,7 @@ class IgnoreManager {
       if (path.startsWith(ignorePath)) {
         const relativePath = nodePath.relative(ignorePath, path)
         if (ig.ignores(isDirectory ? `${relativePath}/` : relativePath)) {
-          Logger.debug(`Ignoring ${path}`)
+          this.logger.debug(`Ignoring ${path}`)
           return true
         }
       }

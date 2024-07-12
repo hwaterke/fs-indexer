@@ -1,6 +1,6 @@
 import {HashingAlgorithmType} from './HashingService.js'
-import {Logger} from './LoggerService.js'
 import {IndexedFileWithHashes} from '../drizzle/schema.js'
+import {LoggerService} from './LoggerService.js'
 
 export class DuplicateFinderService {
   /**
@@ -17,7 +17,9 @@ export class DuplicateFinderService {
     const sizeGroups = this.groupBySize(files).filter(
       (group) => group.length > 1
     )
-    Logger.debug(`${sizeGroups.length} groups of files with same size`)
+    LoggerService.getLogger().debug(
+      `${sizeGroups.length} groups of files with same size`
+    )
 
     const unsorted = sizeGroups
       .flatMap((group) => this.groupByHashes(group))

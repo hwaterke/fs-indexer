@@ -2,7 +2,7 @@ import {Args, Command, Flags} from '@oclif/core'
 import {IndexerService} from '../services/IndexerService.js'
 import {HashingAlgorithmType} from '../services/HashingService.js'
 import {getHashingAlgorithms, humanReadableSeconds} from '../utils.js'
-import {Logger} from '../services/LoggerService.js'
+import {LoggerService} from '../services/LoggerService.js'
 
 export default class Verify extends Command {
   static description =
@@ -36,6 +36,9 @@ export default class Verify extends Command {
     debug: Flags.boolean({
       description: 'enable debug logging',
     }),
+    logFolder: Flags.string({
+      description: 'folder to save logs',
+    }),
   }
 
   static args = {
@@ -45,9 +48,10 @@ export default class Verify extends Command {
   async run(): Promise<void> {
     const {args, flags} = await this.parse(Verify)
 
-    if (flags.debug) {
-      Logger.setLevel('debug')
-    }
+    LoggerService.configure({
+      logFolder: flags.logFolder,
+      debug: flags.debug,
+    })
 
     const indexer = new IndexerService(flags.database)
     await indexer.verify(args.path, {
@@ -56,7 +60,8 @@ export default class Verify extends Command {
       purge: flags.purge,
       hashingAlgorithms: getHashingAlgorithms(flags.hashingAlgorithms),
     })
-    console.log(
+
+    LoggerService.getLogger().info(
       `Operation performed in ${humanReadableSeconds(indexer.elapsedSeconds())}`
     )
   }

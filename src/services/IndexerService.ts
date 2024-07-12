@@ -5,11 +5,11 @@ import {DatabaseService} from './DatabaseService.js'
 import * as nodePath from 'node:path'
 import {HashingAlgorithmType, HashingService} from './HashingService.js'
 import {DuplicateFinderService} from './DuplicateFinderService.js'
-import {Logger} from './LoggerService.js'
 import {IndexedFile, IndexedFileWithHashes} from '../drizzle/schema.js'
 import {walkDirOrFile} from '../walkDirOrFile.js'
 import {formatBytes, formatNumber} from '../utils/Formatter.js'
 import {isNullish} from 'remeda'
+import {LoggerService} from './LoggerService.js'
 
 type CrawlingOptions = {
   limit?: number
@@ -40,6 +40,7 @@ export class IndexerService {
   private readonly databaseService
   private readonly hashingService = new HashingService()
   private readonly duplicateFinder = new DuplicateFinderService()
+  private readonly logger = LoggerService.getLogger()
 
   private metrics = {
     filesCrawled: 0,
@@ -56,15 +57,17 @@ export class IndexerService {
 
   async info(options: InfoOptions): Promise<void> {
     const fileCount = await this.databaseService.countFiles()
-    Logger.info(`${formatNumber(fileCount)} files indexed`)
+    this.logger.info(`${formatNumber(fileCount)} files indexed`)
     const hashCount = await this.databaseService.countHashes()
-    Logger.info(`${formatNumber(hashCount)} hashes`)
+    this.logger.info(`${formatNumber(hashCount)} hashes`)
     const totalSize = await this.databaseService.totalSize()
-    Logger.info(`${formatBytes(totalSize)} - ${formatNumber(totalSize)} bytes`)
+    this.logger.info(
+      `${formatBytes(totalSize)} - ${formatNumber(totalSize)} bytes`
+    )
 
     for await (const algorithm of Object.values(HashingAlgorithmType)) {
       const algoHashCount = await this.databaseService.countHashes(algorithm)
-      Logger.info(
+      this.logger.info(
         `${algoHashCount} hashes (${algorithm}) - ${Math.round(
           (100 * algoHashCount) / fileCount
         )}%`
@@ -74,7 +77,7 @@ export class IndexerService {
     if (options.duplicates) {
       // TODO Rework the duplicate finder.
       const candidates = await this.databaseService.duplicates()
-      Logger.debug(`${candidates.length} duplicate candidates`)
+      this.logger.debug(`${candidates.length} duplicate candidates`)
       // const duplicates = this.duplicateFinder.getDuplicateGroups(candidates)
       //
       // // Write duplicates to file
@@ -89,7 +92,7 @@ export class IndexerService {
 
   async lookup(path: string, options: LookupOptions): Promise<void> {
     path = expandPath(path)
-    Logger.debug(`Lookup ${path}`)
+    this.logger.debug(`Lookup ${path}`)
 
     await walkDirOrFile({
       path,
@@ -97,7 +100,7 @@ export class IndexerService {
         ignoreFileName: null,
       },
       callback: async (filePath) => {
-        Logger.debug(`Looking up ${filePath}`)
+        this.logger.debug(`Looking up ${filePath}`)
 
         const {exactHashes, similarityHashes} =
           await this.lookupExistingEntries(filePath)
@@ -105,13 +108,13 @@ export class IndexerService {
         let removed = false
 
         if (exactHashes.length > 0) {
-          Logger.info(`Files with exact hashes`)
+          this.logger.info(`Files with exact hashes`)
           if (exactHashes.some((f) => f.path === filePath)) {
-            Logger.info(`🆗 ${filePath}`)
+            this.logger.info(`🆗 ${filePath}`)
           } else {
-            Logger.info(`✅ ${filePath}`)
+            this.logger.info(`✅ ${filePath}`)
             if (options.remove) {
-              Logger.info(
+              this.logger.info(
                 `Deleting ${filePath} as copies were found in the index`
               )
               await unlink(filePath)
@@ -120,21 +123,21 @@ export class IndexerService {
           }
 
           for (const file of exactHashes) {
-            Logger.debug(`  ${file.path}`)
+            this.logger.debug(`  ${file.path}`)
           }
         } else {
-          Logger.info(`❌ ${filePath}`)
+          this.logger.info(`❌ ${filePath}`)
         }
 
         if (!removed) {
           if (similarityHashes.length > 0) {
-            Logger.info(`Files with similar hashes`)
+            this.logger.info(`Files with similar hashes`)
             if (similarityHashes.some((f) => f.path === filePath)) {
-              Logger.info(`🆗 ${filePath}`)
+              this.logger.info(`🆗 ${filePath}`)
             } else {
-              Logger.info(`✅ ${filePath}`)
+              this.logger.info(`✅ ${filePath}`)
               if (options.removeSimilar) {
-                Logger.info(
+                this.logger.info(
                   `Deleting ${filePath} as similar files were found in the index`
                 )
                 await unlink(filePath)
@@ -143,10 +146,10 @@ export class IndexerService {
             }
 
             for (const file of similarityHashes) {
-              Logger.debug(`  ${file.path}`)
+              this.logger.debug(`  ${file.path}`)
             }
           } else {
-            Logger.info(`❌ ${filePath}`)
+            this.logger.info(`❌ ${filePath}`)
           }
         }
 
@@ -160,9 +163,9 @@ export class IndexerService {
             const similarExifDate =
               await this.databaseService.findFilesByExifDate(metadata.exifDate)
             if (similarExifDate.length > 0) {
-              Logger.info(`Files with similar exif date`)
+              this.logger.info(`Files with similar exif date`)
               for (const file of similarExifDate) {
-                Logger.debug(`  ${file.path}`)
+                this.logger.debug(`  ${file.path}`)
               }
             }
           }
@@ -176,9 +179,9 @@ export class IndexerService {
               prefixMatch[0]
             )
             if (similarPrefix.length > 0) {
-              Logger.info(`Files with similar prefix`)
+              this.logger.info(`Files with similar prefix`)
               for (const file of similarPrefix) {
-                Logger.debug(`  ${file.path}`)
+                this.logger.debug(`  ${file.path}`)
               }
             }
           }
@@ -191,7 +194,7 @@ export class IndexerService {
 
   async crawl(path: string, options: CrawlingOptions): Promise<void> {
     path = expandPath(path)
-    Logger.debug(`Indexing ${path}`)
+    this.logger.debug(`Indexing ${path}`)
 
     await walkDirOrFile({
       path,
@@ -221,7 +224,7 @@ export class IndexerService {
               this.metrics.exifExtracted++
             }
           } else {
-            Logger.debug(`Indexing ${filePath}`)
+            this.logger.debug(`Indexing ${filePath}`)
 
             const metadata = await this.getFileMetadata({
               filePath,
@@ -254,23 +257,23 @@ export class IndexerService {
             stop: shouldStopForLimit || shouldStopForTime,
           }
         } catch (error) {
-          Logger.error(`Error processing ${filePath}`)
+          this.logger.error(`Error processing ${filePath}`)
           throw error
         }
       },
     })
 
-    Logger.info(
+    this.logger.info(
       `${this.metrics.filesCrawled} files crawled. ${this.metrics.newFilesIndexed} newly indexed. ${this.metrics.filesHashed} files hashed. ${this.metrics.exifExtracted} exif extracted.`
     )
   }
 
   async verify(path: string, options: VerifyOptions): Promise<void> {
     path = expandPath(path)
-    Logger.debug(`Verifying ${path}`)
+    this.logger.debug(`Verifying ${path}`)
 
     const fileCount = await this.databaseService.countFilesInPath({path})
-    Logger.debug(`${fileCount} indexed files in ${path}`)
+    this.logger.debug(`${fileCount} indexed files in ${path}`)
 
     const filesToProcess = options.limit
       ? Math.min(fileCount, options.limit)
@@ -283,7 +286,7 @@ export class IndexerService {
         count: Math.min(100, filesToProcess - this.metrics.filesCrawled),
       })
 
-      Logger.debug(`${files.length} files to verify`)
+      this.logger.debug(`Verifying ${files.length} files`)
 
       for (const file of files) {
         await this.verifyFile(file, options)
@@ -304,12 +307,12 @@ export class IndexerService {
     file: IndexedFileWithHashes,
     options: VerifyOptions
   ): Promise<void> {
-    Logger.debug(`${this.metrics.filesCrawled} Verifying ${file.path}`)
+    this.logger.debug(`${this.metrics.filesCrawled} Verifying ${file.path}`)
 
     try {
       await access(file.path, constants.F_OK)
     } catch {
-      Logger.info(`File ${file.path} does not exist anymore`)
+      this.logger.info(`File ${file.path} does not exist anymore`)
 
       if (options.purge) {
         await this.databaseService.deleteFile({
@@ -336,7 +339,7 @@ export class IndexerService {
           indexedFileId: file.id,
         })
       } else {
-        Logger.info(
+        this.logger.info(
           `Inconsistent metadata for ${file.path}. ${JSON.stringify(
             metadata
           )} vs ${JSON.stringify(file)}`
@@ -359,16 +362,16 @@ export class IndexerService {
               existingHash.algorithm
             )
           } else {
-            Logger.info(
+            this.logger.info(
               `Inconsistent hash ${hashingAlgorithm} for ${file.path}. ${hashResult?.hash} vs ${existingHash.value}`
             )
           }
         } else {
-          Logger.info(`Missing hash ${hashingAlgorithm} for ${file}`)
+          this.logger.info(`Missing hash ${hashingAlgorithm} for ${file.path}`)
         }
       }
     } else {
-      Logger.info(
+      this.logger.info(
         `${file.path} has a different size. ${metadata.size} vs ${file.size}`
       )
     }
@@ -427,7 +430,7 @@ export class IndexerService {
     exactHashes: IndexedFile[]
     similarityHashes: IndexedFile[]
   }> {
-    Logger.debug(`Looking up for entries similar to ${path}`)
+    this.logger.debug(`Looking up for entries similar to ${path}`)
     const {size} = await this.getFileMetadata({
       filePath: path,
       includeExif: false,
@@ -462,7 +465,9 @@ export class IndexerService {
     const similarMatches: IndexedFile[] = []
 
     const filesWithSameSize = await this.databaseService.findFilesBySize(size)
-    Logger.debug(`Found ${filesWithSameSize.length} files with the same size`)
+    this.logger.debug(
+      `Found ${filesWithSameSize.length} files with the same size`
+    )
 
     for (const algorithm of Object.values(HashingAlgorithmType)) {
       const hashResult = await getHash(algorithm)

@@ -1,7 +1,7 @@
-import {Logger} from './LoggerService.js'
 import {exec as callbackExec} from 'node:child_process'
 import {extname} from 'node:path'
 import {promisify} from 'node:util'
+import {LoggerService} from './LoggerService.js'
 
 const exec = promisify(callbackExec)
 
@@ -129,6 +129,8 @@ export class HashingService {
       [HashingAlgorithmType.FFMPG_SHA256]: new FfmpegSha256(),
     }
 
+  private logger = LoggerService.getLogger()
+
   async hash(
     path: string,
     algorithm: HashingAlgorithmType
@@ -136,12 +138,12 @@ export class HashingService {
     hash: string
     version: string
   } | null> {
-    Logger.debug(`Computing hash ${algorithm} for ${path}`)
+    this.logger.debug(`Computing hash ${algorithm} for ${path}`)
 
     const hashingAlgorithm = this.algorithms[algorithm]
 
     if (!hashingAlgorithm.isFileSupported(path)) {
-      Logger.debug(`File type not supported for ${algorithm}`)
+      this.logger.debug(`File type not supported for ${algorithm}`)
       return null
     }
 

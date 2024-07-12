@@ -1,7 +1,7 @@
 import {Args, Command, Flags} from '@oclif/core'
 import {IndexerService} from '../services/IndexerService.js'
 import {humanReadableSeconds} from '../utils.js'
-import {Logger} from '../services/LoggerService.js'
+import {LoggerService} from '../services/LoggerService.js'
 
 export default class Lookup extends Command {
   static description = 'searches for files within the database'
@@ -28,6 +28,9 @@ export default class Lookup extends Command {
       description: 'look for files with similar exif date',
       default: false,
     }),
+    logFolder: Flags.string({
+      description: 'folder to save logs',
+    }),
   }
 
   static args = {
@@ -37,9 +40,10 @@ export default class Lookup extends Command {
   async run(): Promise<void> {
     const {args, flags} = await this.parse(Lookup)
 
-    if (flags.debug) {
-      Logger.setLevel('debug')
-    }
+    LoggerService.configure({
+      logFolder: flags.logFolder,
+      debug: flags.debug,
+    })
 
     const indexer = new IndexerService(flags.database)
     await indexer.lookup(args.path, {
@@ -47,7 +51,8 @@ export default class Lookup extends Command {
       removeSimilar: flags.removeSimilar,
       includeExif: flags.exif,
     })
-    console.log(
+
+    LoggerService.getLogger().info(
       `Operation performed in ${humanReadableSeconds(indexer.elapsedSeconds())}`
     )
   }

@@ -3,9 +3,9 @@ import {constants} from 'node:fs'
 import * as nodePath from 'node:path'
 import {homedir} from 'node:os'
 import {HashingAlgorithmType} from './services/HashingService.js'
-import {Logger} from './services/LoggerService.js'
 import {FfmpegService} from './services/FfmpegService.js'
 import {EXIF_TAGS, ExiftoolService} from '@hwaterke/media-probe'
+import {LoggerService} from './services/LoggerService.js'
 
 export const uniq = <T>(array: T[]): T[] => [...new Set(array)]
 
@@ -124,9 +124,11 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
     }
   }
 
-  const service = new ExiftoolService({debug: Logger.isDebug()})
+  const service = new ExiftoolService({
+    debug: LoggerService.getLogger().isDebug(),
+  })
 
-  Logger.debug(`Extracting exif for ${path}`)
+  LoggerService.getLogger().debug(`Extracting exif for ${path}`)
   const exif = await service.extractExifMetadata(path)
 
   const date = service.extractDateTimeFromExif({
@@ -141,7 +143,9 @@ export const extractExif = async (path: string): Promise<ExifMetadata> => {
     gps === null &&
     ['.mov', '.mp4'].includes(nodePath.extname(path).toLowerCase())
   ) {
-    const ffmpegService = new FfmpegService({debug: Logger.isDebug()})
+    const ffmpegService = new FfmpegService({
+      debug: LoggerService.getLogger().isDebug(),
+    })
     gps = await ffmpegService.extractGpsCoordinatesFromSubtitleFile(path)
 
     if (gps === null) {

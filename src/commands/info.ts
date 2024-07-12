@@ -1,7 +1,7 @@
 import {Command, Flags} from '@oclif/core'
 import {IndexerService} from '../services/IndexerService.js'
 import {humanReadableSeconds} from '../utils.js'
-import {Logger} from '../services/LoggerService.js'
+import {LoggerService} from '../services/LoggerService.js'
 
 export default class Info extends Command {
   static description = 'prints information about the database'
@@ -16,18 +16,23 @@ export default class Info extends Command {
     debug: Flags.boolean({
       description: 'enable debug logging',
     }),
+    logFolder: Flags.string({
+      description: 'folder to save logs',
+    }),
   }
 
   async run(): Promise<void> {
     const {flags} = await this.parse(Info)
 
-    if (flags.debug) {
-      Logger.setLevel('debug')
-    }
+    LoggerService.configure({
+      logFolder: flags.logFolder,
+      debug: flags.debug,
+    })
 
     const indexer = new IndexerService(flags.database)
     await indexer.info({duplicates: flags.duplicates})
-    console.log(
+
+    LoggerService.getLogger().info(
       `Operation performed in ${humanReadableSeconds(indexer.elapsedSeconds())}`
     )
   }
