@@ -1,5 +1,6 @@
 import * as winston from 'winston'
 import DailyRotateFile from 'winston-daily-rotate-file'
+import path from 'node:path'
 
 class Logger {
   constructor(private logger: winston.Logger) {}
@@ -37,7 +38,7 @@ export class LoggerService {
       if (logFolder) {
         transportArray.push(
           new DailyRotateFile({
-            filename: 'indexer-%DATE%.log',
+            filename: path.join(logFolder, 'indexer-%DATE%.log'),
             datePattern: 'YYYY-MM-DD-HH',
             zippedArchive: true,
             maxSize: '20m',
