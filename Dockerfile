@@ -1,4 +1,4 @@
-FROM node:22-alpine as builder
+FROM node:22.4-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN apk add --no-cache alpine-sdk python3
@@ -8,7 +8,7 @@ COPY bin ./bin
 COPY tsconfig.json ./
 RUN npm run build
 
-FROM node:22-alpine
+FROM node:22.4-alpine
 WORKDIR /app
 ENV EXIFTOOL_VERSION=12.87
 RUN apk add --no-cache perl make xxhash b3sum ffmpeg tiff libheif imagemagick
