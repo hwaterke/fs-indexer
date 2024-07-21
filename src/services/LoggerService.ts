@@ -40,7 +40,6 @@ export class LoggerService {
           new DailyRotateFile({
             filename: path.join(logFolder, 'indexer-%DATE%.log'),
             datePattern: 'YYYY-MM-DD-HH',
-            zippedArchive: true,
             maxSize: '20m',
             format: winston.format.combine(
               winston.format.timestamp(),
