@@ -1,4 +1,4 @@
-FROM node:22.4-alpine AS builder
+FROM node:22.6-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN apk add --no-cache alpine-sdk python3
@@ -8,9 +8,9 @@ COPY bin ./bin
 COPY tsconfig.json ./
 RUN npm run build
 
-FROM node:22.4-alpine
+FROM node:22.6-alpine
 WORKDIR /app
-ENV EXIFTOOL_VERSION=12.87
+ENV EXIFTOOL_VERSION=12.93
 RUN apk add --no-cache perl make xxhash b3sum ffmpeg tiff libheif imagemagick
 RUN wget https://exiftool.org/Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
     tar -xzf Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
