@@ -100,7 +100,7 @@ export class IndexerService {
         ignoreFileName: null,
       },
       callback: async (filePath) => {
-        this.logger.debug(`Looking up ${filePath}`)
+        this.logger.info(`Looking up ${filePath}`)
 
         const {exactHashes, similarityHashes} =
           await this.lookupExistingEntries(filePath)
@@ -108,7 +108,7 @@ export class IndexerService {
         let removed = false
 
         if (exactHashes.length > 0) {
-          this.logger.info(`Files with exact hashes`)
+          this.logger.debug(`Files with exact hashes`)
           if (exactHashes.some((f) => f.path === filePath)) {
             this.logger.info(`🆗 ${filePath}`)
           } else {
@@ -123,19 +123,19 @@ export class IndexerService {
           }
 
           for (const file of exactHashes) {
-            this.logger.debug(`  ${file.path}`)
+            this.logger.info(`  ${file.path}`)
           }
         } else {
-          this.logger.info(`❌ ${filePath}`)
+          this.logger.debug(`❌ Exact - ${filePath}`)
         }
 
         if (!removed) {
           if (similarityHashes.length > 0) {
-            this.logger.info(`Files with similar hashes`)
+            this.logger.debug(`Files with similar hashes`)
             if (similarityHashes.some((f) => f.path === filePath)) {
               this.logger.info(`🆗 ${filePath}`)
             } else {
-              this.logger.info(`✅ ${filePath}`)
+              this.logger.info(`↕️ ${filePath}`)
               if (options.removeSimilar) {
                 this.logger.info(
                   `Deleting ${filePath} as similar files were found in the index`
@@ -146,10 +146,10 @@ export class IndexerService {
             }
 
             for (const file of similarityHashes) {
-              this.logger.debug(`  ${file.path}`)
+              this.logger.info(`  ${file.path}`)
             }
           } else {
-            this.logger.info(`❌ ${filePath}`)
+            this.logger.debug(`❌ Similar - ${filePath}`)
           }
         }
 
@@ -258,7 +258,9 @@ export class IndexerService {
           }
         } catch (error) {
           this.logger.error(`Error processing ${filePath}`)
-          throw error
+          this.logger.error(`${error}`)
+          // Skip this file and continue
+          return {stop: false}
         }
       },
     })
