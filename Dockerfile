@@ -24,7 +24,7 @@ RUN if [ "$TARGETARCH" = "amd64" ]; then \
 
 FROM node:22.9-alpine
 WORKDIR /app
-ENV EXIFTOOL_VERSION=12.97
+ENV EXIFTOOL_VERSION=13.02
 RUN apk add --no-cache \
     perl \
     make \
@@ -33,6 +33,7 @@ RUN apk add --no-cache \
     tiff \
     libheif \
     imagemagick
+# Install ExifTool from source
 RUN wget https://exiftool.org/Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
     tar -xzf Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
     rm Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
@@ -41,10 +42,12 @@ RUN wget https://exiftool.org/Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
     make install && \
     cd .. && \
     rm -rf Image-ExifTool-${EXIFTOOL_VERSION}
+# Install Node dependencies
 COPY package.json package-lock.json ./
 RUN apk add --no-cache --virtual .build-deps alpine-sdk python3 && \
     npm install --production && \
     apk del .build-deps
+# Copy build files and binaries
 COPY --from=builder /app/dist ./dist/
 COPY --from=builder /app/bin ./bin/
 COPY --from=ffmpeg-downloader /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
