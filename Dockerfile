@@ -1,4 +1,4 @@
-FROM node:22.6-alpine AS builder
+FROM node:22.9-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN apk add --no-cache alpine-sdk python3
@@ -8,10 +8,31 @@ COPY bin ./bin
 COPY tsconfig.json ./
 RUN npm run build
 
-FROM node:22.6-alpine
+FROM --platform=$BUILDPLATFORM alpine AS ffmpeg-downloader
+WORKDIR /ffmpeg
+ARG TARGETARCH
+RUN apk add --no-cache wget
+# Download the appropriate ffmpeg static binary depending on the architecture
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -O ffmpeg.tar.xz; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+        wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz -O ffmpeg.tar.xz; \
+    fi && \
+    tar -xvf ffmpeg.tar.xz && \
+    mv ffmpeg-*/ffmpeg /usr/local/bin/ffmpeg && \
+    mv ffmpeg-*/ffprobe /usr/local/bin/ffprobe
+
+FROM node:22.9-alpine
 WORKDIR /app
-ENV EXIFTOOL_VERSION=12.93
-RUN apk add --no-cache perl make xxhash b3sum ffmpeg tiff libheif imagemagick
+ENV EXIFTOOL_VERSION=12.97
+RUN apk add --no-cache \
+    perl \
+    make \
+    xxhash \
+    b3sum \
+    tiff \
+    libheif \
+    imagemagick
 RUN wget https://exiftool.org/Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
     tar -xzf Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
     rm Image-ExifTool-${EXIFTOOL_VERSION}.tar.gz && \
@@ -26,3 +47,5 @@ RUN apk add --no-cache --virtual .build-deps alpine-sdk python3 && \
     apk del .build-deps
 COPY --from=builder /app/dist ./dist/
 COPY --from=builder /app/bin ./bin/
+COPY --from=ffmpeg-downloader /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
+COPY --from=ffmpeg-downloader /usr/local/bin/ffprobe /usr/local/bin/ffprobe
